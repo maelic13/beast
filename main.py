@@ -3,6 +3,9 @@ import time
 from threading import Thread, Event
 from queue import Queue
 
+# VARIABLES
+engineName = "Beast 0.02"
+
 # CLASSES
 class options():
 	def __init__(self):
@@ -45,7 +48,7 @@ def uciLoop():
 			sys.exit()
 
 		if command[0] == "uci":
-			print('id name Beast 0.01')
+			print('id name', engineName)
 			print('id author Maelic')
 			print()
 			print('option name Threads type spin default 1 min 1 max 32')
@@ -98,7 +101,7 @@ if __name__ == '__main__':
 	worker = Thread(target=go)
 	worker.daemon = True
 
-	print('Beast 0.01 by Maelic')
+	print(engineName, 'by Maelic')
 	tasks = Queue(maxsize=0)
 
 	worker.start()

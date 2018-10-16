@@ -1,0 +1,35 @@
+Diplomová práce - Šachový engine s heuristikou typu NN
+
+1. Úvod
+    - cíle práce, úvod do problematiky
+2. Šach a počítačový šach
+    2.1 Pravidla šachu
+    2.2 Historie, vývoj (... Deep Blue ... Stockfish ... AlphaZero, lc0 ...)
+3. Klasické metody
+    - popis funkce prohledávání stromu pomocí alpha-beta, heuristiky velmi složité, založenéí na lidmi programované bázi znalostí
+4. Testování síly hry
+    - popis metod testování šachových programů a jejich síly v rámci odchylek přesnosti, přehled hlavních rating listů současné doby
+5. Neuronové sítě a jejich využití
+    - lehký úvod do neuronových sítí, odkaz na mou bakalářskou práci
+6. Návrh aplikace
+    6.1 UCI komunikační protokol
+        - popis komunikace enginu s GUI, není nutnost vývoje nového GUI
+    6.2 Search
+        - popis a výběr prohledávací metody (MCTS, alpha-beta...)
+    6.3 Heuristika
+        - neuronová síť hodnotící pozici
+        - korektně naučené heuristice by teoreticky stačil propočet do hloubky jednoho tahu
+        - nelze dosáhnout v rozumném čase - nutnost kombinace s vhonou prohledávací funkcí stavového prostoru
+7. Učení NN
+    7.1 Z analyzovaných her vysoké kvality
+        - vyberu korespondenční hry hrané s pomocí nejlepších počítačů, udělám rychlou analýzu se Stockfishem -> trénovací sady
+    7.2 Hrou proti soupeři
+        - učení hrou proti Stockfish a jeho úrovním (1-20)
+    7.3 Self-play
+        - učení hrou sám proti sobě
+8. Testování síly programu
+    8.1 Bullet/Ultrabullet
+        - hlavní část testování - krátký čas na hru, možno odehrát dostatečné množství partií pro vyvození závěrů pro danou časovou kontrolu, generalizace obtížná, ale relativně možná
+    8.2 Blitz + Rapid
+        - malé množství kvalitnějších her za účelem analýzy stylu hry a její "estetiky"
+9. Závěr a zhodnocení
