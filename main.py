@@ -2,9 +2,12 @@ import sys
 import time
 from threading import Thread, Event
 from queue import Queue
+import board
+import chess
 
 # VARIABLES
-engineName = "Beast 0.02"
+engineName = "Beast 0.03"
+author = 'Maelic'
 
 # CLASSES
 class options():
@@ -33,26 +36,27 @@ class options():
 		elif option == "hash":
 			return self.hash
 
-
 # FUNCTIONS
 def uciLoop():
-	while True:
-		command = analyseCommand(input())
-		# Log into file
-		'''
+	run = True
+	while run:
+		inp = input()
+		command = analyseCommand(inp)
+
+		# Log into file		
 		file = open('log.txt', 'a+')
-		file.write(command + '\n')
-		fil.close()
-		'''
+		file.write(inp + '\n')
+		file.close()
+		
 		if command[0] == "quit":
-			sys.exit()
+			run = False
 
 		if command[0] == "uci":
 			print('id name', engineName)
-			print('id author Maelic')
+			print('id author', author)
 			print()
-			print('option name Threads type spin default 1 min 1 max 32')
-			print('option name Hash type spin default 16 min 1 max 131072')
+			print('option name Threads type spin default 1 min 1 max 1')
+			#print('option name Hash type spin default 16 min 1 max 131072')	No need for hash for now
 			print('uciok')
 
 		if command[0] == "setoption":
@@ -65,13 +69,23 @@ def uciLoop():
 
 		if command[0] == "go":
 			task.put(command[1:])
-			flag.set()			
+			flag.set()
 		
 		if command[0] == "stop":
 			flag.clear()
+			print('bestmove', tree.bestMove)
 
 		if command[0] == "ucinewgame":
 			continue
+
+		if command[0] == "position":
+			if command[1] == "startpos":
+				tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+			elif command[1] == "startpos" and command[2] == "moves" and len(command) > 2:
+				tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+				for i in range(3,len(command)):
+					tree.root.board.push(chess.Move.from_uci(command[i]))
+			
 
 
 def analyseCommand(inputCommand):
@@ -83,8 +97,12 @@ def go():
 		flag.wait()
 		command = task.get()
 		while flag.is_set():
-			print(command)
-			time.sleep(1)
+			if command[0] == 'infinite':
+				tree.go(0)
+			if command[0] == 'depth':
+				tree.go(int(command[1]))
+				flag.clear()
+
 
 # MAIN + INITIALIZATIONS
 if __name__ == '__main__':
@@ -100,8 +118,10 @@ if __name__ == '__main__':
 	flag.clear()
 	worker = Thread(target=go)
 	worker.daemon = True
+	tree = board.searchTree()
+	tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
 
-	print(engineName, 'by Maelic')
+	print(engineName, 'by', author)
 	tasks = Queue(maxsize=0)
 
 	worker.start()
