@@ -4,19 +4,20 @@ from threading import Thread, Event
 from queue import Queue
 import board
 import chess
+import cmd
 
 # VARIABLES
-engineName = "Beast 0.03"
+engineName = "Beast 0.04"
 author = 'Maelic'
 
 # CLASSES
 class options():
 	def __init__(self):
-		self.position = None
 		self.bestmove = None
 		self.debug = False
 		self.threads = 1
 		self.hash = 16
+		self.fiftyMoveRule = True
 
 	def set(self, option, value):
 		if option == "debug" and value == "on":
@@ -27,6 +28,12 @@ class options():
 			self.threads = value
 		elif (option == "hash") and (int(value) < 17000) and (int(value) > 0):
 			self.hash = value
+		elif option == 'Syzygy50MoveRule':
+			if value in ['true', 'True', '1']:
+				self.fiftyMoveRule = True
+			elif value in ['false', 'False', '0']:
+				self.fiftyMoveRule = False
+			tree.setFiftyMoveRule(self.fiftyMoveRule)
 
 	def value(self, option):
 		if option == "debug":
@@ -37,64 +44,74 @@ class options():
 			return self.hash
 
 # FUNCTIONS
-def uciLoop():
-	run = True
-	while run:
-		inp = input()
-		command = analyseCommand(inp)
+class uciLoop(cmd.Cmd):
+	prompt = ''
 
-		# Log into file		
-		file = open('log.txt', 'a+')
-		file.write(inp + '\n')
-		file.close()
-		
-		if command[0] == "quit":
-			run = False
+	def do_uci(self, arg):
+		print('id name', engineName)
+		print('id author', author)
+		print()
+		print('option name Threads type spin default 1 min 1 max 1')
+		#print('option name Hash type spin default 16 min 1 max 131072')	No need for hash for now
+		print('option name Syzygy50MoveRule type check default true')
+		print('uciok')
 
-		if command[0] == "uci":
-			print('id name', engineName)
-			print('id author', author)
-			print()
-			print('option name Threads type spin default 1 min 1 max 1')
-			#print('option name Hash type spin default 16 min 1 max 131072')	No need for hash for now
-			print('uciok')
+	def do_quit(self, arg):
+		return True
 
-		if command[0] == "setoption":
-			opt.set(command[2], command[3])
-			if opt.value("debug"):
-				print(command[2], " = ", opt.value(command[2]))
+	def do_setoption(self, arg):
+		command = arg.split()
+		opt.set(command[1], command[2])
+		if opt.value("debug"):
+			print(command[1], " = ", opt.value(command[1]))
 
-		if command[0] == "isready":
-			print('readyok')
+	def do_isready(self, arg):
+		print('readyok')
 
-		if command[0] == "go":
-			task.put(command[1:])
-			flag.set()
-		
-		if command[0] == "stop":
-			flag.clear()
-			print('bestmove', tree.bestMove)
+	def do_go(self, arg):
+		task.put(arg.split())
+		flag.set()
 
-		if command[0] == "ucinewgame":
-			continue
-
-		if command[0] == "position":
-			if command[1] == "startpos":
-				tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
-			elif command[1] == "startpos" and command[2] == "moves" and len(command) > 2:
-				tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
-				for i in range(3,len(command)):
-					tree.root.board.push(chess.Move.from_uci(command[i]))
-			
+	def do_stop(self, arg):
+		flag.clear()
+		print('bestmove', tree.bestMove)
 
 
-def analyseCommand(inputCommand):
-	command = inputCommand.split()
-	return command
+	def do_ucinewgame(self, arg):
+		#delete tree
+		tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', None)
+
+	def do_position(self, arg):
+		try:
+			[command, arguments] = arg.split(' ', 1)
+		except:
+			command = arg
+			arguments = None
+
+		if command == 'startpos':
+			try:
+				arguments = arguments.split()
+				fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+				moves = arguments[1:]
+			except:
+				fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+				moves = None
+		elif command == 'fen':
+			try:
+				[fen, moves] = arguments.split(' moves ')
+				moves = moves.split()
+			except:
+				fen = arguments
+				moves = None
+
+		tree.setPosition(fen, moves)
+		if opt.debug:
+			print(tree.root.getBoard())
 
 def go():
 	while True:
 		flag.wait()
+		'''
 		command = task.get()
 		while flag.is_set():
 			if command[0] == 'infinite':
@@ -102,28 +119,22 @@ def go():
 			if command[0] == 'depth':
 				tree.go(int(command[1]))
 				flag.clear()
-
+		'''
+		tree.go(2)
+		flag.clear()
 
 # MAIN + INITIALIZATIONS
 if __name__ == '__main__':
-
-	# Delete previous logs into file
-	file = open('log.txt', 'w')
-	file.write('')
-	file.close()
-
 	opt = options()
 	task = Queue(maxsize=0)
 	flag = Event()
 	flag.clear()
+
 	worker = Thread(target=go)
 	worker.daemon = True
-	tree = board.searchTree()
-	tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
 
+	tree = board.searchTree()
 	print(engineName, 'by', author)
-	tasks = Queue(maxsize=0)
 
 	worker.start()
-
-	uciLoop()
+	uciLoop().cmdloop()
