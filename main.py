@@ -1,9 +1,6 @@
-import sys
-import time
 from threading import Thread, Event
 from queue import Queue
 import board
-import chess
 import cmd
 
 # VARIABLES

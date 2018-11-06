@@ -1,10 +1,6 @@
 import chess
-import sys
 import time
 from queue import Queue
-import math
-import io
-import sys
 import math
 
 # VARIABLES
