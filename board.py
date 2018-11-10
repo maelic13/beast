@@ -95,9 +95,9 @@ class searchTree:
                 flush=True
                 )
         
-        if self.depth > 1:
+        try:
             print('bestmove', self.bestMove, 'ponder', self.pv[1], flush=True)
-        else:
+        except:
             print('bestmove', self.bestMove, flush=True)
 
     def getNodes(self):
