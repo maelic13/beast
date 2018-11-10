@@ -1,7 +1,12 @@
 import chess
 import time
 from queue import Queue
+from threading import Timer
 import math
+import search
+import expand
+import timemanagement as tm
+import heuristic
 
 # VARIABLES
 
@@ -48,14 +53,12 @@ class searchTree:
         self.root = node(chess.Board())
         self.depth = 0
         self.seldepth = 0
-        self.evaluateNodeQueue = Queue(maxsize=0)
-        self.closed = []
+        self.expandQueue = Queue(maxsize=0)
         self.nodesCount = 0
         self.timeStart = None
         self.bestMove = None
         self.pv = ''
         self.bestEval = None
-        self.run = False
         self.fiftyMoveRule = True
 
     def setPosition(self, fen, moves):
@@ -64,157 +67,41 @@ class searchTree:
         if not moves == None:
             for each in moves:
                 self.root.makeMove(each)
-        self.depth = 0        
+        self.depth = 0
+        self.seldepth = 0
 
-    def go(self, depth):
+    def go(self, goParams, options, flag):
+        # time management + timer
         self.timeStart = time.time()
-        self.evaluateNodeQueue.put(self.root)
-        self.evaluateNodes()
-        while (self.depth < depth) or (depth == 0):
-            self.expand(self.root)
-            self.evaluateNodes()
-            sV = self.alphaBeta(self.root, -math.inf, math.inf, self.root.getBoard().turn)
-            self.bestEval = sV.bestValue
-            self.bestMove = sV.bestMove
-            self.pv = sV.pv
-            print('info depth', self.depth, 'seldepth', self.seldepth, 'score cp', int(self.bestEval), 'nodes', self.nodesCount, 'nps', self.nodesPerSecond(), 'time', round(1000*self.getTime()), 'pv', ' '.join([str(item) for item in self.pv]), flush=True)
+        timeForMove = tm.timeForMove(goParams, options, self.root.getBoard().turn)
+        if timeForMove > 0: 
+            timer = Timer(timeForMove, self.clearFlag, args=[flag])
+            timer.start()
+
+        # main loop of iterative expansion
+        while flag.is_set() and self.conditionsMet(goParams):
+            # expansion
+            expand.expand(self, goParams, options, flag)
+
+            # search
+            search.search(self, options)
             self.depth += 1
-            if self.seldepth < self.depth:
-                self.seldepth = self.depth
-        print('bestmove', self.bestMove, flush=True)
 
-    def setDepth(self, depth):
-        self.depth = depth
-
-    def expand(self, current):
-        if current.children == []:
-            legalMoves = current.getBoard().legal_moves
-            for each in legalMoves:
-                current.board.push(each)
-                new = node(current.board.copy())
-                current.board.pop()
-                current.addChild(new)
-                new.setParent(current)
-                self.evaluateNodeQueue.put(new)
-                self.nodesCount += 1
-        else:   
-            for each in current.children:
-                self.expand(each)
-                self.nodesCount += 1
-
-    def evaluateNodes(self):
-        while not self.evaluateNodeQueue.empty():
-            current = self.evaluateNodeQueue.get()
-            if current.getBoard().is_game_over():
-                if current.getBoard().is_checkmate() and current.getBoard().turn:
-                    current.setEval(-10000)
-                    continue
-                elif current.getBoard().is_checkmate() and (not current.getBoard().turn):
-                    current.setEval(10000)
-                    continue
-                elif current.getBoard().is_stalemate():
-                    current.setEval(0)
-                    continue
-            elif current.getBoard().is_insufficient_material():
-                    current.setEval(0)
-                    continue
-            elif current.getBoard().can_claim_threefold_repetition():
-                    current.setEval(0)
-                    continue
-            elif current.getBoard().can_claim_fifty_moves() and self.fiftyMoveRule:
-                    current.setEval(0)
-                    continue
-            else:
-                evalTable = [100, 295, 315, 500, 900]
-                eval = 0
-                for i in range(0, 64):
-                    piece = current.getBoard().piece_at(i)
-                    pieceValue = 0
-                    if piece == chess.Piece(chess.PAWN, chess.WHITE):
-                        pieceValue = evalTable[0]
-                    elif piece == chess.Piece(chess.PAWN, chess.BLACK):
-                        pieceValue = -evalTable[0]
-                    elif piece == chess.Piece(chess.KNIGHT, chess.WHITE):
-                        pieceValue = evalTable[1]
-                    elif piece == chess.Piece(chess.KNIGHT, chess.BLACK):
-                        pieceValue = -evalTable[1]
-                    elif piece == chess.Piece(chess.BISHOP, chess.WHITE):
-                        pieceValue = evalTable[2]
-                    elif piece == chess.Piece(chess.BISHOP, chess.BLACK):
-                        pieceValue = -evalTable[2]
-                    elif piece == chess.Piece(chess.ROOK, chess.WHITE):
-                        pieceValue = evalTable[3]
-                    elif piece == chess.Piece(chess.ROOK, chess.BLACK):
-                        pieceValue = -evalTable[3]
-                    elif piece == chess.Piece(chess.QUEEN, chess.WHITE):
-                        pieceValue = evalTable[4]
-                    elif piece == chess.Piece(chess.QUEEN, chess.BLACK):
-                        pieceValue = -evalTable[4]
-                    
-                    #add square and other conditions
-                    if i==27 or i==28 or i==35 or i==36:
-                        pieceValue = pieceValue * 1.05
-                    '''
-                    if current.getBoard().turn:
-                        opponentKing = current.getBoard().king(chess.BLACK)
-                        distance = math.sqrt((opponentKing%8 - i%8)^2 + (int(opponentKing/8) - int(i/8))^2)
-                        pieceValue += 0.3 - distance*0.01
-                    else:
-                        opponentKing = current.getBoard().king(chess.WHITE)
-                    '''
-                    eval += pieceValue
-            current.setEval(eval)
-            self.nodesCount += 1
+            print(
+                'info depth', self.depth, 'seldepth', self.seldepth,
+                'score cp', int(self.bestEval), 'nodes', self.nodesCount,
+                'nps', self.nodesPerSecond(), 'time', round(1000*self.getTime()),
+                'pv', ' '.join([str(item) for item in self.pv]),
+                flush=True
+                )
         
-    def alphaBeta(self, node, alpha, beta, turn):
-        if node.getChildren() == []:
-            currentValues = searchValues()
-            currentValues.bestValue = node.getEval()
-            return currentValues
-
-        if turn:
-            currentValues = searchValues()
-            currentValues.bestValue = -math.inf
-            for each in node.getChildren():
-                previousValues = self.alphaBeta(each, alpha, beta, not turn)
-                alpha = max(alpha, previousValues.bestValue)
-                if currentValues.bestValue < previousValues.bestValue:
-                    currentValues.bestValue = previousValues.bestValue
-                    currentValues.bestMove = each.getBoard().peek()
-                    currentValues.pv = previousValues.pv
-                    currentValues.pv.insert(0, currentValues.bestMove.uci())
-                if beta <= alpha:
-                    break
-            return currentValues
+        if self.depth > 1:
+            print('bestmove', self.bestMove, 'ponder', self.pv[1], flush=True)
         else:
-            currentValues = searchValues()
-            currentValues.bestValue = math.inf
-            for each in node.getChildren():
-                previousValues = self.alphaBeta(each, alpha, beta, not turn)
-                beta = min(beta, previousValues.bestValue)
-                if currentValues.bestValue > previousValues.bestValue:
-                    currentValues.bestValue = previousValues.bestValue
-                    currentValues.bestMove = each.getBoard().peek()
-                    currentValues.pv = previousValues.pv
-                    currentValues.pv.insert(0, currentValues.bestMove.uci())
-                if beta <= alpha:
-                    break
-            return currentValues
+            print('bestmove', self.bestMove, flush=True)
 
     def getNodes(self):
         return self.nodesCount
-
-    def getRoot(self):
-        return self.root
-
-    '''
-    def countMemoryUsage(self): # NOT WORKING!
-        count = sys.getsizeof(self)
-        for x in self.nodes:
-            for y in x:
-                count += sys.getsizeof(y)
-        return count
-    '''
 
     def nodesPerSecond(self):
         try:
@@ -238,8 +125,12 @@ class searchTree:
     def setFiftyMoveRule(self, value):
         self.fiftyMoveRule = value
 
-class searchValues:
-    def __init__(self):
-        self.bestValue = None
-        self.bestMove = None
-        self.pv = []
+    def clearFlag(self, flag):
+        flag.clear()
+        with self.expandQueue.mutex:
+            self.expandQueue.queue.clear()
+    def conditionsMet(self, goParams):
+        if self.depth == goParams.depth:
+            return False
+        else:
+            return True
