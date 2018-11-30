@@ -1,0 +1,18 @@
+v0.06:
+    + Selective search
+    + FullPruned search
+    + Syzygy tablebases support
+    + pseudo quietscence search
+    rework of heuristic, solid elo gain in self-play
+    correction of full expansion and pruned expansion
+    rework of expansion priority
+    bugfix of stop command, add flag to search
+    bogfix for node and nps count
+
+v0.05:
+    + time-management
+    + communication features (most covered, all important)
+    + structure rewrite, ready for new features, ease of use
+
+v0.04:
+    first functional version with many limits in commands and heuristic.

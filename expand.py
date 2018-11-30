@@ -1,51 +1,162 @@
 import board
 import heuristic
 from queue import Queue
-#Various expand strategies
-    
-def expand(tree, goParams, options, flag):
+import chess
+
+#Various expand strategies    
+def expand(tree, goParams, options):
+    if tree.root.tablebasePosition and tree.depth >= 1:
+        options.flag.clear()
+        return
     # functions to find nodes to expand and put them into queue
-    if options.fullSearch:
-        fullExpand(tree, tree.root, goParams, flag)
-    else:
-        prunedExpand(tree, tree.root, goParams, flag)
+    if options.expandType == 'Selective':
+        selective(tree, tree.root, options.flag)
+    elif options.expandType == 'Full':
+        fullExpand(tree, tree.root, options.flag)
+    elif options.expandType == 'FullPruned':
+        prunedExpand(tree, tree.root, options)
 
     # expand nodes from queue and evaluate new nodes
     # later add worker processes
-    executeExpand(tree, goParams, flag)
+    executeExpand(tree, goParams, options)
 
-def fullExpand(tree, current, goParams, flag):
+def fullExpand(tree, current, flag):
     if not flag.is_set():
         return
 
-    if current.children == []:
-        tree.expandQueue.put(current)
+    if current.children == [] and current.depth == tree.depth:
+        if current.tablebasePosition and not current.parent == None:
+            pass
+        else:
+            tree.expandQueue.put(current)
     else:   
         for each in current.children:
-            fullExpand(tree,each,goParams,flag)
+            fullExpand(tree, each, flag)
 
-def prunedExpand(tree, current, goParams, flag):
+def prunedExpand(tree, current, options):
     # pruned expansion
-    random = 1
+    if not options.flag.is_set():
+        return
 
-def executeExpand(tree, goParams, flag):
-    while not tree.expandQueue.empty() and flag.is_set() and conditionsMet(tree.nodesCount, goParams.nodes):
+    if current.children == [] and current.depth <= tree.depth:
+        if current.tablebasePosition and not current.parent == None:
+            pass
+        else:
+            tree.expandQueue.put(current)
+    else:
+        for i in range(options.pruningParam):
+            try:
+                prunedExpand(tree, current.children[i], options)
+            except:
+                return
+        del(current.children[options.pruningParam:])
+
+def selective(tree, current, flag):
+    if not flag.is_set():
+        return
+
+    expandParam = [5, 3, 2, 1]
+    
+    if current.children == [] and current.depth <= tree.depth+1:
+        if current.talebasePosition and not current.parent == None:
+            pass
+        else:
+            tree.expandQueue.put(current)
+    else:
+        if current.depth == 0 or current.depth == 1:
+            for i in range(0,expandParam[0]):
+                try:
+                    selective(tree, current.children[i], flag)
+                except:
+                    return
+            del(current.children[expandParam[0]:])
+        elif current.depth == 2 or current.depth == 3:
+            for i in range(0,expandParam[1]):
+                try:
+                    selective(tree, current.children[i], flag)
+                except:
+                    return
+            del(current.children[expandParam[1]:])
+        elif current.depth == 4 or current.depth == 5:
+            for i in range(0,expandParam[2]):
+                try:
+                    selective(tree, current.children[i], flag)
+                except:
+                    return
+            del(current.children[expandParam[2]:])
+        else:
+            for i in range(0,expandParam[3]):
+                try:
+                    selective(tree, current.children[i], flag)
+                except:
+                    return
+            del(current.children[expandParam[3]:])
+
+def executeExpand(tree, goParams, options):
+    while not tree.expandQueue.empty() and conditionsMet(tree.nodesCount, goParams.nodes, options.flag):
         current = tree.expandQueue.get()
-        legalMoves = current.getBoard().legal_moves
+        legalMoves = current.board.legal_moves
+        
         for each in legalMoves:
             current.board.push(each)
             new = board.node(current.board.copy())
             current.board.pop()
             current.addChild(new)
             new.setParent(current)
-            heuristic.heuristic(new, tree.fiftyMoveRule)
+            heuristic.heuristic(new, options)
+            new.depth = current.depth + 1
+            if not isQuiet(tree, current, new, each):          # pseudo quietscence search
+                tree.expandQueue.put(new)
             tree.nodesCount += 1
 
-def conditionsMet(count, nodes):
-    if not nodes == None:
-        if count < nodes:
-            return True
+        if current.board.turn:
+            current.children = sorted(current.children, key=lambda child: child.eval, reverse=True)
         else:
-            return False
+            current.children = sorted(current.children, key=lambda child: child.eval)
+
+def conditionsMet(count, nodes, flag):
+    if flag.is_set():
+        if not nodes == None:
+            if count < nodes:
+                return True
+            else:
+                flag.clear()
+                return False
+        else:
+            return True
     else:
+        return False
+
+def isQuiet(tree, current, new, move):
+    ''' WAY TOO SLOW!
+    if current.depth >= tree.depth:
+        if current.board.is_capture(move) or new.board.is_check():
+            if new.eval > 1000 or new.eval < -1000:
+                return True
+            else:
+                return False
+        else:
+            return True
+    else:
+        return False
+    '''
+    # Check one forward after capture or check either one move or two as to end after opponent's move
+    if (current.board.is_capture(move) or new.board.is_check()) and tree.depth > 0:
+        if new.depth - tree.depth <= 1:
+            return False
+        elif new.board.turn != tree.root.board.turn:
+            return False
+        else:
+            return True
+    elif current.depth < tree.depth:
+        return False
+    else:
+        if new.depth > tree.seldepth:
+            tree.seldepth = new.depth
         return True
+
+def main():
+    pass
+
+if __name__ == '__main__':
+    main()

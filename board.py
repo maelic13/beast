@@ -16,37 +16,15 @@ class node:
         self.board = board
         self.eval = None
         self.parent = None
+        self.depth = 0
         self.children = []
-
-    def getBoard(self):
-        return self.board
+        self.tablebasePosition = False
 
     def addChild(self, child):
         self.children.append(child)
 
     def setParent(self, parent):
         self.parent = parent
-
-    def getParent(self):
-        return self.parent
-
-    def getChildren(self):
-        return self.children
-
-    def setEval(self,eval):
-        self.eval = eval
-
-    def getEval(self):
-        return self.eval
-
-    def makeMove(self, move):
-        self.board.push(chess.Move.from_uci(move))
-
-    def setFen(self, fen):
-        self.board = chess.Board(fen)
-    
-    def clearBoard(self):
-        self.board.clear()
 
 class searchTree:
     def __init__(self):
@@ -59,33 +37,36 @@ class searchTree:
         self.bestMove = None
         self.pv = ''
         self.bestEval = None
-        self.fiftyMoveRule = True
 
     def setPosition(self, fen, moves):
         board = chess.Board(fen)
         self.root = node(board)
         if not moves == None:
             for each in moves:
-                self.root.makeMove(each)
+                self.root.board.push(chess.Move.from_uci(each))
         self.depth = 0
         self.seldepth = 0
+        self.nodesCount = 0
 
-    def go(self, goParams, options, flag):
+    def go(self, goParams, options):
         # time management + timer
         self.timeStart = time.time()
-        timeForMove = tm.timeForMove(goParams, options, self.root.getBoard().turn)
+        timeForMove = tm.timeForMove(goParams, options, self.root.board.turn)
         if timeForMove > 0: 
-            timer = Timer(timeForMove, self.clearFlag, args=[flag])
+            timer = Timer(timeForMove, self.clearFlag, args=[options.flag])
             timer.start()
+        heuristic.heuristic(self.root, options)
 
         # main loop of iterative expansion
-        while flag.is_set() and self.conditionsMet(goParams):
+        while self.conditionsMet(goParams, options.flag):
             # expansion
-            expand.expand(self, goParams, options, flag)
+            expand.expand(self, goParams, options)
 
             # search
             search.search(self, options)
-            self.depth += 1
+
+            if options.flag.is_set():
+                self.depth += 1
 
             print(
                 'info depth', self.depth, 'seldepth', self.seldepth,
@@ -100,37 +81,23 @@ class searchTree:
         except:
             print('bestmove', self.bestMove, flush=True)
 
-    def getNodes(self):
-        return self.nodesCount
-
     def nodesPerSecond(self):
         try:
-            nps = round(self.getNodes() / self.getTime())
+            nps = round(self.nodesCount / self.getTime())
         except:
-            nps = self.getNodes()
+            nps = self.nodesCount
         return nps
 
     def getTime(self):
-        tm = time.time() - self.timeStart
-        return tm
-
-    def printTreeFens(self, node):
-        if not node.getChildren() == []:
-            for each in node.getChildren():
-                self.printTreeFens(each)
-            print(node.getBoard().fen())
-        else:
-            print(node.getBoard().fen())
-
-    def setFiftyMoveRule(self, value):
-        self.fiftyMoveRule = value
+        return time.time() - self.timeStart
 
     def clearFlag(self, flag):
         flag.clear()
         with self.expandQueue.mutex:
             self.expandQueue.queue.clear()
-    def conditionsMet(self, goParams):
-        if self.depth == goParams.depth:
+
+    def conditionsMet(self, goParams, flag):
+        if self.depth == goParams.depth or not flag.is_set():
             return False
         else:
             return True
