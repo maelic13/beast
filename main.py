@@ -49,7 +49,7 @@ class options():
 		self.syzygyPath = '<empty>'
 		self.syzygyProbeLimit = 6
 		self.expandType = 'Full'
-		self.pruningParam = 7
+		self.pruningParam = 15
 		self.timeFlex = 10						# time flex for time management
 		self.searchAlgorithm = 'AlphaBeta'		# search algorithm
 		self.flag = Event()						# flag to start go function

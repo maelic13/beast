@@ -7,7 +7,7 @@ v0.06:
     correction of full expansion and pruned expansion
     rework of expansion priority
     bugfix of stop command, add flag to search
-    bogfix for node and nps count
+    bugfix for node and nps count
 
 v0.05:
     + time-management
