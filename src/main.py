@@ -53,6 +53,7 @@ class options():
 		self.timeFlex = 10						# time flex for time management
 		self.searchAlgorithm = 'AlphaBeta'		# search algorithm
 		self.flag = Event()						# flag to start go function
+		self.quietscence = False
 
 	def set(self, option, value):
 		if option in ['debug', 'Debug'] and value in ['on', 'On']:
@@ -66,7 +67,6 @@ class options():
 				self.fiftyMoveRule = True
 			elif value in ['false', 'False', '0']:
 				self.fiftyMoveRule = False
-			tree.fiftyMoveRule = self.fiftyMoveRule
 		elif option in ['expandtype', 'ExpandType']:
 			if value in ['Selective', 'selective']:
 				self.expandType = 'Selective'
@@ -84,6 +84,11 @@ class options():
 			self.syzygyPath = value
 		elif option in ['SyzygyProbeLimit', 'syzygyprobelimit']:
 			self.syzygyProbeLimit = value
+		elif option in ['quietscence', 'Quietscence']:
+			if value in ['true', 'True', '1']:
+				self.quietscence = True
+			elif value in ['false', 'False', '0']:
+				self.quietscence = False
 
 	def value(self, option):
 		if option == "debug":
@@ -96,6 +101,8 @@ class options():
 			return self.syzygyPath
 		elif option in ['SyzygyProbeLimit', 'syzygyprobelimit']:
 			return self.syzygyProbeLimit
+		elif option in ['quietscence', 'Quietscence']:
+			return self.quietscence
 
 class uciLoop(cmd.Cmd):
 	prompt = ''
@@ -116,7 +123,8 @@ class uciLoop(cmd.Cmd):
 		print('option name ExpandType type combo default', opt.expandType,'var FullPruned var Full var Selective')			# search all possible moves without pruning
 		print('option name PruningParam type spin default', opt.pruningParam, 'min 0 max 100')								# pruning parameter in cp
 		print('option name TimeFlex type spin default', opt.timeFlex,'min 0 max 1000')										# time flexibility in ms so engine could make a move in time and did not lose on time
-		print('option name SearchAlgorithm type combo default', opt.searchAlgorithm,'var AlphaBeta')# var MCTS')				# types of search algorithms
+		print('option name SearchAlgorithm type combo default', opt.searchAlgorithm,'var AlphaBeta')# var MCTS')			# types of search algorithms
+		print('option name Quietscence type check default', opt.quietscence)
 		print('option name SyzygyPath type string default', opt.syzygyPath)													# path to syzygy tablebases
 		print('option name SyzygyProbeLimit type spin default', opt.syzygyProbeLimit,'min 0 max 7')							# probe limit for syzygy
 		print('option name Syzygy50MoveRule type check default', opt.fiftyMoveRule)

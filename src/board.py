@@ -69,17 +69,14 @@ class searchTree:
                 self.depth += 1
 
             print(
-                'info depth', self.depth, 'seldepth', self.seldepth,
+                'info depth', self.depth, #'seldepth', self.seldepth,
                 'score cp', int(self.bestEval), 'nodes', self.nodesCount,
                 'nps', self.nodesPerSecond(), 'time', round(1000*self.getTime()),
                 'pv', ' '.join([str(item) for item in self.pv]),
                 flush=True
                 )
         
-        try:
-            print('bestmove', self.bestMove, 'ponder', self.pv[1], flush=True)
-        except:
-            print('bestmove', self.bestMove, flush=True)
+        print('bestmove', self.bestMove, flush=True)
 
     def nodesPerSecond(self):
         try:

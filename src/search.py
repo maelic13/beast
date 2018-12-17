@@ -18,7 +18,12 @@ def search(tree, options):
         sV = MCTS(tree.root, tree.root.board.turn)
     
     if sV != None and options.flag.is_set():
-        tree.bestEval = sV.bestValue
+        # eval should be given from point of view of side to move (don't like it but...)
+        if tree.root.board.turn:
+            tree.bestEval = sV.bestValue
+        else:
+            tree.bestEval = -sV.bestValue
+            
         tree.bestMove = sV.bestMove
         tree.pv = sV.pv
     else:

@@ -3,12 +3,12 @@ import chess.syzygy
 
 # VARIABLES
 # Parameter weights for bonus eval
-pawnRankW = 5
+pawnRankW = 7
 pawnFileW = 5
 pawnCenterW = 5
 pawnDistanceW = 5
 
-knightCenterW = 8
+knightCenterW = 7
 knightDistanceW = 8
 
 bishopCenterW = 5

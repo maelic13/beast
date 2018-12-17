@@ -105,7 +105,7 @@ def executeExpand(tree, goParams, options):
             new.setParent(current)
             heuristic.heuristic(new, options)
             new.depth = current.depth + 1
-            if not isQuiet(tree, current, new, each):          # pseudo quietscence search
+            if options.quietscence and (not isQuiet(tree, current, new, each)):          # pseudo quietscence search
                 tree.expandQueue.put(new)
             tree.nodesCount += 1
 
@@ -140,7 +140,7 @@ def isQuiet(tree, current, new, move):
     else:
         return False
     '''
-    # Check one forward after capture or check either one move or two as to end after opponent's move
+    # Check one forward after capture or check either one move or two as to end after opponent's move (also slow..)
     if (current.board.is_capture(move) or new.board.is_check()) and tree.depth > 0:
         if new.depth - tree.depth <= 1:
             return False
