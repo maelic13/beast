@@ -6,7 +6,8 @@ import math
 import search
 import expand
 import timemanagement as tm
-import heuristic
+# import heuristic
+# import nn_heuristic
 
 # VARIABLES
 
@@ -55,8 +56,7 @@ class searchTree:
         if timeForMove > 0: 
             timer = Timer(timeForMove, self.clearFlag, args=[options.flag])
             timer.start()
-        heuristic.heuristic(self.root, options)
-
+        
         # main loop of iterative expansion
         while self.conditionsMet(goParams, options.flag):
             # expansion

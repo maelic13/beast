@@ -1,7 +1,11 @@
+import logging
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
 import board
 import heuristic
+import nn_heuristic
 from queue import Queue
 import chess
+from keras.models import load_model
 
 #Various expand strategies    
 def expand(tree, goParams, options):
@@ -58,7 +62,7 @@ def selective(tree, current, flag):
     expandParam = [5, 3, 2, 1]
     
     if current.children == [] and current.depth <= tree.depth+1:
-        if current.talebasePosition and not current.parent == None:
+        if current.tablebasePosition and not current.parent == None:
             pass
         else:
             tree.expandQueue.put(current)
@@ -93,6 +97,13 @@ def selective(tree, current, flag):
             del(current.children[expandParam[3]:])
 
 def executeExpand(tree, goParams, options):
+    # load NN model if needed
+    if options.nnHeuristic and options.nn_input_type == 'planes':
+        model = load_model('net_planes.h5')
+    elif options.nnHeuristic and options.nn_input_type == 'basic':
+        model = load_model('net_basic.h5')
+
+    # main execure expand loop
     while not tree.expandQueue.empty() and conditionsMet(tree.nodesCount, goParams.nodes, options.flag):
         current = tree.expandQueue.get()
         legalMoves = current.board.legal_moves
@@ -103,9 +114,15 @@ def executeExpand(tree, goParams, options):
             current.board.pop()
             current.addChild(new)
             new.setParent(current)
-            heuristic.heuristic(new, options)
+            
+            # choice of heuristic
+            if options.nnHeuristic:
+                nn_heuristic.nn_heuristic(new, options, model)
+            else:
+                heuristic.heuristic(new, options)
+
             new.depth = current.depth + 1
-            if options.quietscence and (not isQuiet(tree, current, new, each)):          # pseudo quietscence search
+            if options.quiescence and (not isQuiet(tree, current, new, each)):          # pseudo quietscence search
                 tree.expandQueue.put(new)
             tree.nodesCount += 1
 
@@ -113,6 +130,9 @@ def executeExpand(tree, goParams, options):
             current.children = sorted(current.children, key=lambda child: child.eval, reverse=True)
         else:
             current.children = sorted(current.children, key=lambda child: child.eval)
+    
+    # dismiss model (to be sure)
+    model = None
 
 def conditionsMet(count, nodes, flag):
     if flag.is_set():

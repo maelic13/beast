@@ -3,8 +3,11 @@ from queue import Queue
 import board
 import cmd
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 # VARIABLES
-engineName = "Beast 0.06"
+engineName = 'Beast 0.07'
 author = 'M. Macurek'
 
 # CLASSES
@@ -48,12 +51,14 @@ class options():
 		self.fiftyMoveRule = True
 		self.syzygyPath = '<empty>'
 		self.syzygyProbeLimit = 6
-		self.expandType = 'Full'
+		self.expandType = 'Selective'
 		self.pruningParam = 15
 		self.timeFlex = 10						# time flex for time management
 		self.searchAlgorithm = 'AlphaBeta'		# search algorithm
 		self.flag = Event()						# flag to start go function
-		self.quietscence = False
+		self.quiescence = True
+		self.nnHeuristic = True
+		self.nn_input_type = 'planes'
 
 	def set(self, option, value):
 		if option in ['debug', 'Debug'] and value in ['on', 'On']:
@@ -84,11 +89,18 @@ class options():
 			self.syzygyPath = value
 		elif option in ['SyzygyProbeLimit', 'syzygyprobelimit']:
 			self.syzygyProbeLimit = value
-		elif option in ['quietscence', 'Quietscence']:
+		elif option in ['quiescence', 'Quietscence']:
 			if value in ['true', 'True', '1']:
-				self.quietscence = True
+				self.quiescence = True
 			elif value in ['false', 'False', '0']:
-				self.quietscence = False
+				self.quiescence = False
+		elif option in ['NN_Heuristic', 'nn_heuristic']:
+			if value in ['true', 'True', '1']:
+				self.nnHeuristic = True
+			elif value in ['false', 'False', '0']:
+				self.nnHeuristic = False
+		elif option in ['nn_input_type', 'NN_input_type']:
+			self.nn_input_type = value
 
 	def value(self, option):
 		if option == "debug":
@@ -102,7 +114,11 @@ class options():
 		elif option in ['SyzygyProbeLimit', 'syzygyprobelimit']:
 			return self.syzygyProbeLimit
 		elif option in ['quietscence', 'Quietscence']:
-			return self.quietscence
+			return self.quiescence
+		elif option in ['nn_heuristic', 'NN_Heuristic']:
+			return self.nnHeuristic
+		elif option in ['nn_input_type', 'NN_input_type']:
+			return self.nn_input_type
 
 class uciLoop(cmd.Cmd):
 	prompt = ''
@@ -124,10 +140,12 @@ class uciLoop(cmd.Cmd):
 		print('option name PruningParam type spin default', opt.pruningParam, 'min 0 max 100')								# pruning parameter in cp
 		print('option name TimeFlex type spin default', opt.timeFlex,'min 0 max 1000')										# time flexibility in ms so engine could make a move in time and did not lose on time
 		print('option name SearchAlgorithm type combo default', opt.searchAlgorithm,'var AlphaBeta')# var MCTS')			# types of search algorithms
-		print('option name Quietscence type check default', opt.quietscence)
+		print('option name Quiescence type check default', opt.quiescence)
 		print('option name SyzygyPath type string default', opt.syzygyPath)													# path to syzygy tablebases
 		print('option name SyzygyProbeLimit type spin default', opt.syzygyProbeLimit,'min 0 max 7')							# probe limit for syzygy
 		print('option name Syzygy50MoveRule type check default', opt.fiftyMoveRule)
+		print('option name NN_Heuristic type check default', opt.nnHeuristic)
+		print('option name NN_input_type type combo default', opt.nn_input_type,'var basic var planes')
 		print('uciok')
 
 	def do_quit(self, arg):
