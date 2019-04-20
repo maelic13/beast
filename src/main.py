@@ -3,11 +3,11 @@ from queue import Queue
 import board
 import cmd
 
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from os import environ
+environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # VARIABLES
-engineName = 'Beast 0.07'
+engineName = 'Beast 0.08'
 author = 'M. Macurek'
 
 # CLASSES
@@ -51,14 +51,15 @@ class options():
 		self.fiftyMoveRule = True
 		self.syzygyPath = '<empty>'
 		self.syzygyProbeLimit = 6
-		self.expandType = 'Selective'
+		self.expandType = 'Full'
 		self.pruningParam = 15
 		self.timeFlex = 10						# time flex for time management
 		self.searchAlgorithm = 'AlphaBeta'		# search algorithm
 		self.flag = Event()						# flag to start go function
 		self.quiescence = True
-		self.nnHeuristic = True
-		self.nn_input_type = 'planes'
+		self.heuristic = 'NeuralNetwork'		# type of heuristic
+		self.network = 'Regression'				# type of neural network system
+		self.modelFile = 'default'
 
 	def set(self, option, value):
 		if option in ['debug', 'Debug'] and value in ['on', 'On']:
@@ -94,13 +95,12 @@ class options():
 				self.quiescence = True
 			elif value in ['false', 'False', '0']:
 				self.quiescence = False
-		elif option in ['NN_Heuristic', 'nn_heuristic']:
-			if value in ['true', 'True', '1']:
-				self.nnHeuristic = True
-			elif value in ['false', 'False', '0']:
-				self.nnHeuristic = False
-		elif option in ['nn_input_type', 'NN_input_type']:
-			self.nn_input_type = value
+		elif option in ['Heuristic', 'heuristic']:
+			self.heuristic = value
+		elif option in ['network', 'Network']:
+			self.network = value
+		elif option in ['modelfile', 'ModelFile']:
+			self.modelFile = value
 
 	def value(self, option):
 		if option == "debug":
@@ -115,10 +115,12 @@ class options():
 			return self.syzygyProbeLimit
 		elif option in ['quietscence', 'Quietscence']:
 			return self.quiescence
-		elif option in ['nn_heuristic', 'NN_Heuristic']:
-			return self.nnHeuristic
-		elif option in ['nn_input_type', 'NN_input_type']:
-			return self.nn_input_type
+		elif option in ['heuristic', 'Heuristic']:
+			return self.heuristic
+		elif option in ['Network', 'network']:
+			return self.network
+		elif option in ['modelfile', 'ModelFile']:
+			return self.modelFile
 
 class uciLoop(cmd.Cmd):
 	prompt = ''
@@ -144,8 +146,9 @@ class uciLoop(cmd.Cmd):
 		print('option name SyzygyPath type string default', opt.syzygyPath)													# path to syzygy tablebases
 		print('option name SyzygyProbeLimit type spin default', opt.syzygyProbeLimit,'min 0 max 7')							# probe limit for syzygy
 		print('option name Syzygy50MoveRule type check default', opt.fiftyMoveRule)
-		print('option name NN_Heuristic type check default', opt.nnHeuristic)
-		print('option name NN_input_type type combo default', opt.nn_input_type,'var basic var planes')
+		print('option name Heuristic type combo default', opt.heuristic,'var Classic var NeuralNetwork var Random')
+		print('option name Network type combo default', opt.network,'var Regression var Classification')
+		print('option name ModelFile type string default', opt.modelFile)
 		print('uciok')
 
 	def do_quit(self, arg):
