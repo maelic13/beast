@@ -1,12 +1,6 @@
-v0.08:
-    + rework of neural network heurictic (regression and classification models)
-    + random move heuristic
-    + nn_backend source
-    + learning_data source
-
 v0.07:
     correction for giving eval from side to move rather than from white's point of view
-    + option quiescence
+    + option quietscence
     drop ponder from printing bestmove (since it does not ponder at all)
     + neural network hauristic (two models)
 

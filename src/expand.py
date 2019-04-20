@@ -2,12 +2,12 @@ import logging
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
 import board
 import heuristic
+import nn_heuristic
 from queue import Queue
 import chess
 from keras.models import load_model
-from keras.backend import clear_session
 
-# Various expand strategies    
+#Various expand strategies    
 def expand(tree, goParams, options):
     if tree.root.tablebasePosition and tree.depth >= 1:
         options.flag.clear()
@@ -98,18 +98,12 @@ def selective(tree, current, flag):
 
 def executeExpand(tree, goParams, options):
     # load NN model if needed
-    if options.heuristic == 'NeuralNetwork' and options.network == 'Regression':
-        if options.modelFile == 'default':
-            model = load_model('regression.h5')
-        else:
-            model = load_model(options.modelFile)
-    elif options.heuristic == 'NeuralNetwork' and options.network == 'Classification':
-        if options.modelFile == 'default':
-            model = load_model('classification.h5')
-        else:
-            model = load_model(options.modelFile)
+    if options.nnHeuristic and options.nn_input_type == 'planes':
+        model = load_model('net_planes.h5')
+    elif options.nnHeuristic and options.nn_input_type == 'basic':
+        model = load_model('net_basic.h5')
 
-    # main execute expand loop
+    # main execure expand loop
     while not tree.expandQueue.empty() and conditionsMet(tree.nodesCount, goParams.nodes, options.flag):
         current = tree.expandQueue.get()
         legalMoves = current.board.legal_moves
@@ -122,10 +116,8 @@ def executeExpand(tree, goParams, options):
             new.setParent(current)
             
             # choice of heuristic
-            if options.heuristic == 'NeuralNetwork':
-                heuristic.nn_heuristic(new, options, model)
-            elif options.heuristic == 'Random':
-                heuristic.random_heuristic(new)
+            if options.nnHeuristic:
+                nn_heuristic.nn_heuristic(new, options, model)
             else:
                 heuristic.heuristic(new, options)
 
@@ -141,7 +133,6 @@ def executeExpand(tree, goParams, options):
     
     # dismiss model (to be sure)
     model = None
-    clear_session()
 
 def conditionsMet(count, nodes, flag):
     if flag.is_set():
@@ -183,3 +174,9 @@ def isQuiet(tree, current, new, move):
         if new.depth > tree.seldepth:
             tree.seldepth = new.depth
         return True
+
+def main():
+    pass
+
+if __name__ == '__main__':
+    main()

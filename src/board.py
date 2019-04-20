@@ -57,10 +57,6 @@ class searchTree:
             timer = Timer(timeForMove, self.clearFlag, args=[options.flag])
             timer.start()
         
-        # other
-        if options.heuristic == 'random':
-            goParams.depth = 1
-        
         # main loop of iterative expansion
         while self.conditionsMet(goParams, options.flag):
             # expansion
