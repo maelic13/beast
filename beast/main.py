@@ -1,18 +1,23 @@
 from threading import Thread, Event, Timer
 from queue import Queue
-import board
 import cmd
+import search
+from chess import Board, Move
+from search import Node
 
 from os import environ
 environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # VARIABLES
-engineName = 'Beast 0.08'
+engineName = 'Beast 0.09'
 author = 'M. Macurek'
 
 # CLASSES
 class goParameters:
 	def __init__(self):
+		# position
+		self.root = Node('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+
 		# time parameters
 		self.wtime = None
 		self.btime = None
@@ -31,6 +36,7 @@ class goParameters:
 		self.ponder = False
 
 	def reset(self):
+		self.moves = ''
 		self.wtime = None
 		self.btime = None
 		self.winc = None
@@ -45,21 +51,19 @@ class goParameters:
 
 class options():
 	def __init__(self):
-		self.bestmove = None
-		self.debug = False
-		self.threads = 1
-		self.fiftyMoveRule = True
-		self.syzygyPath = '<empty>'
-		self.syzygyProbeLimit = 6
-		self.expandType = 'Full'
-		self.pruningParam = 15
+		self.debug = False						# debug option
+		self.threads = 1						# number of threads
+		self.fiftyMoveRule = True				# whether to play with 50-move rule or not
+		self.syzygyPath = '<empty>'				# path to syzygy tablebases
+		self.syzygyProbeLimit = 6				# probe limit for syzygy tablebases
 		self.timeFlex = 10						# time flex for time management
 		self.searchAlgorithm = 'AlphaBeta'		# search algorithm
 		self.flag = Event()						# flag to start go function
 		self.quiescence = True
-		self.heuristic = 'NeuralNetwork'		# type of heuristic
+		self.heuristic = 'Classic'				# type of heuristic
 		self.network = 'Regression'				# type of neural network system
-		self.modelFile = 'default'
+		self.modelFile = '<default>'
+		self.model = None
 
 	def set(self, option, value):
 		if option in ['debug', 'Debug'] and value in ['on', 'On']:
@@ -73,47 +77,38 @@ class options():
 				self.fiftyMoveRule = True
 			elif value in ['false', 'False', '0']:
 				self.fiftyMoveRule = False
-		elif option in ['expandtype', 'ExpandType']:
-			if value in ['Selective', 'selective']:
-				self.expandType = 'Selective'
-			elif value in ['FullPruned', 'fullpruned']:
-				self.expandType = 'FullPruned'
-			elif value in ['Full', 'full']:
-				self.expandType = 'Full'
-		elif option in ['PruningParam', 'pruningparam']:
-			self.pruningParam = int(value)
 		elif option in ['timeflex', 'TimeFlex']:
 			self.timeFlex = value
 		elif option in ['SearchAlgorithm', 'searchalgorithm']:
 			self.searchAlgorithm = value
 		elif option in ['SyzygyPath', 'syzzygypath']:
-			self.syzygyPath = value
+			self.syzygyPath = value.replace('\\', '/')
 		elif option in ['SyzygyProbeLimit', 'syzygyprobelimit']:
 			self.syzygyProbeLimit = value
-		elif option in ['quiescence', 'Quietscence']:
+		elif option in ['quiescence', 'Quiescence']:
 			if value in ['true', 'True', '1']:
 				self.quiescence = True
 			elif value in ['false', 'False', '0']:
 				self.quiescence = False
 		elif option in ['Heuristic', 'heuristic']:
 			self.heuristic = value
+			if value in ['random', 'Random']:
+				goParams.depth = 1
 		elif option in ['network', 'Network']:
 			self.network = value
 		elif option in ['modelfile', 'ModelFile']:
-			self.modelFile = value
+			self.modelFile = value.replace('\\', '/')
 
 	def value(self, option):
 		if option == "debug":
 			return self.debug
 		elif option == "threads":
 			return self.threads
-		elif option == 'ExpandType':
-			return self.expandType
 		elif option in ['SyzygyPath', 'syzygypath']:
 			return self.syzygyPath
 		elif option in ['SyzygyProbeLimit', 'syzygyprobelimit']:
 			return self.syzygyProbeLimit
-		elif option in ['quietscence', 'Quietscence']:
+		elif option in ['quiescence', 'Quiescence']:
 			return self.quiescence
 		elif option in ['heuristic', 'Heuristic']:
 			return self.heuristic
@@ -138,8 +133,6 @@ class uciLoop(cmd.Cmd):
 		print('id author', author)
 		print()
 		print('option name Threads type spin default', opt.threads,'min 1 max 1')
-		print('option name ExpandType type combo default', opt.expandType,'var FullPruned var Full var Selective')			# search all possible moves without pruning
-		print('option name PruningParam type spin default', opt.pruningParam, 'min 0 max 100')								# pruning parameter in cp
 		print('option name TimeFlex type spin default', opt.timeFlex,'min 0 max 1000')										# time flexibility in ms so engine could make a move in time and did not lose on time
 		print('option name SearchAlgorithm type combo default', opt.searchAlgorithm,'var AlphaBeta')# var MCTS')			# types of search algorithms
 		print('option name Quiescence type check default', opt.quiescence)
@@ -212,7 +205,7 @@ class uciLoop(cmd.Cmd):
 			f.write(arg)
 			f.write('\n')
 			f.close()
-		tree.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', None)
+		goParams.position = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
 	def do_position(self, arg):
 		if opt.debug:
@@ -243,11 +236,22 @@ class uciLoop(cmd.Cmd):
 				fen = arguments
 				moves = None
 
-		tree.setPosition(fen, moves)
+		goParams.root = get_root(fen, moves)
 		if opt.debug:
-			print(tree.root.board)
+			print(goParams.root.position)
 
 # FUNCTIONS
+def get_root(fen, moves):
+	board = Board(fen)
+	root = Node(fen)
+	if not moves == None:
+		for move in moves:
+			fen = board.fen().split(' ')
+			root.previous.append(' '.join(fen[:2]))
+			board.push(Move.from_uci(move))
+	root.position = board.fen()
+	return root
+
 def parseParams(goParams, string):
 	run = True
 	while run:
@@ -290,7 +294,7 @@ def go():
 		opt.flag.wait()
 		goParams.reset()
 		parseParams(goParams, task.get())
-		tree.go(goParams, opt)
+		search.main(goParams, opt)
 		opt.flag.clear()
 
 # MAIN + INITIALIZATIONS
@@ -302,7 +306,6 @@ if __name__ == '__main__':
 	worker = Thread(target=go)			# worker thread
 	worker.daemon = True				# stop when main thread stops
 
-	tree = board.searchTree()			# main search tree
 	print(engineName, 'by', author)
 
 	worker.start()

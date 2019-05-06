@@ -1,5 +1,14 @@
+v0.09
+    + rework of alphabeta pruning (negamax variation)
+    + real quiescence search
+    + delta pruning
+    + repaired 3-fold repetition
+    + repaired 50-moves rule
+    + enhanced syzygy hinted endgames by own heuristic
+    + overall speedup
+
 v0.08:
-    + rework of neural network heurictic (regression and classification models)
+    + rework of neural network heuristic (regression and classification models)
     + random move heuristic
     + nn_backend source
     + learning_data source

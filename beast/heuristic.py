@@ -8,7 +8,14 @@ import numpy as np
 import time
 from random import randrange
 
-# VARIABLES
+## VARIABLES
+# Piece values
+pawn = 100
+knight = 350
+bishop = 350
+rook = 525
+queen = 1000
+
 # Parameter weights for bonus eval
 pawnRankW = 7
 pawnFileW = 5
@@ -31,67 +38,39 @@ kingCenterWvalue = 8
 kingDistanceW = 5
 
 # FUNCTIONS
-def heuristic(node, options):
+def heuristic(fen, options):
+    board = chess.Board(fen)
+
     # special eval conditions
-    if node.board.is_game_over():
-        if node.board.is_checkmate() and node.board.turn:
-            node.eval = -25500
-            return
-        elif node.board.is_checkmate() and (not node.board.turn):
-            node.eval = 25500
-            return
-        elif node.board.is_stalemate():
-            node.eval = 0
-            return
-    elif node.board.is_insufficient_material():
-            node.eval = 0
-            return
-    elif node.board.can_claim_threefold_repetition():
-            node.eval = 0
-            return
-    elif node.board.can_claim_fifty_moves() and options.fiftyMoveRule:
-            node.eval = 0
-            return
+    if board.is_game_over():
+        if board.is_checkmate():
+            return -25500
+        else:
+            return 0
+
+    if options.fiftyMoveRule and int(fen.split(' ')[4]) >= 100:
+        return 0
+
     # normal eval conditions
     else:
-        evalTable = [100, 285, 315, 500, 900]
         eval = 0
-        map = node.board.piece_map()
+        map = board.piece_map()
 
         # tablebase probing
         if len(map) <= options.syzygyProbeLimit and options.syzygyPath != '<empty>':
             with chess.syzygy.open_tablebase(options.syzygyPath, load_wdl=True, max_fds=128) as tablebase:
-                wdl = tablebase.get_wdl(node.board)
-                #dtz = tablebase.get_dtz(node.board)
+                wdl = tablebase.get_wdl(board)
                 if wdl != None:
-                    node.tablebasePosition = True
-                    if options.fiftyMoveRule and wdl < -1:
-                        if node.board.turn:
-                            node.eval = -25500
-                        else:
-                            node.eval = 25500
-                        return
-                    elif options.fiftyMoveRule and wdl > 1:
-                        if node.board.turn:
-                            node.eval = 25500
-                        else:
-                            node.eval = -25500
-                        return
-                    elif not options.fiftyMoveRule and wdl > 0:
-                        if node.board.turn:
-                            node.eval = 25500
-                        else:
-                            node.eval = -25500
-                        return
-                    elif not options.fiftyMoveRule and wdl < -0:
-                        if node.board.turn:
-                            node.eval = -25500
-                        else:
-                            node.eval = 25500
-                        return
+                    if options.fiftyMoveRule and wdl == -2:
+                        eval = -12800
+                    elif options.fiftyMoveRule and wdl == 2:
+                        eval = 12800
+                    elif not options.fiftyMoveRule and wdl == 1:
+                        eval = 12800
+                    elif not options.fiftyMoveRule and wdl == -1:
+                        eval = -12800
                     else:
-                        node.eval = 0
-                        return
+                        return 0
             tablebase.close()
 
         # structures for piece placement
@@ -110,38 +89,39 @@ def heuristic(node, options):
 
         # fill structures
         for each in map:
-            if node.board.piece_at(each) == chess.Piece(chess.PAWN, chess.WHITE):
+            if board.piece_at(each) == chess.Piece(chess.PAWN, chess.WHITE):
                 wPawns.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.PAWN, chess.BLACK):
+            if board.piece_at(each) == chess.Piece(chess.PAWN, chess.BLACK):
                 bPawns.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.KNIGHT, chess.WHITE):
+            if board.piece_at(each) == chess.Piece(chess.KNIGHT, chess.WHITE):
                 wKnights.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.KNIGHT, chess.BLACK):
+            if board.piece_at(each) == chess.Piece(chess.KNIGHT, chess.BLACK):
                 bKnights.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.BISHOP, chess.WHITE):
+            if board.piece_at(each) == chess.Piece(chess.BISHOP, chess.WHITE):
                 wBishops.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.BISHOP, chess.BLACK):
+            if board.piece_at(each) == chess.Piece(chess.BISHOP, chess.BLACK):
                 bBishops.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.ROOK, chess.WHITE):
+            if board.piece_at(each) == chess.Piece(chess.ROOK, chess.WHITE):
                 wRooks.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.ROOK, chess.BLACK):
+            if board.piece_at(each) == chess.Piece(chess.ROOK, chess.BLACK):
                 bRooks.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.QUEEN, chess.WHITE):
+            if board.piece_at(each) == chess.Piece(chess.QUEEN, chess.WHITE):
                 wQueens.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.QUEEN, chess.BLACK):
+            if board.piece_at(each) == chess.Piece(chess.QUEEN, chess.BLACK):
                 bQueens.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.KING, chess.WHITE):
+            if board.piece_at(each) == chess.Piece(chess.KING, chess.WHITE):
                 wKing.append(each)
-            if node.board.piece_at(each) == chess.Piece(chess.KING, chess.BLACK):
+            if board.piece_at(each) == chess.Piece(chess.KING, chess.BLACK):
                 bKing.append(each)
 
         # Initial eval - adding value of pieceson board
+        tab_eval = eval
         eval =  (
-            len(wPawns)*evalTable[0]    -   len(bPawns)*evalTable[0]    +
-            len(wKnights)*evalTable[1]  -   len(bKnights)*evalTable[1]  +
-            len(wBishops)*evalTable[2]  -   len(bBishops)*evalTable[2]  +
-            len(wRooks)*evalTable[3]    -   len(bRooks)*evalTable[3]    +
-            len(wQueens)*evalTable[4]   -   len(bQueens)*evalTable[4]
+            len(wPawns)*pawn        -   len(bPawns)*pawn        +
+            len(wKnights)*knight    -   len(bKnights)*knight    +
+            len(wBishops)*bishop    -   len(bBishops)*bishop    +
+            len(wRooks)*rook        -   len(bRooks)*rook        +
+            len(wQueens)*queen      -   len(bQueens)*queen
             )
             
         # BUNUSES
@@ -171,15 +151,18 @@ def heuristic(node, options):
 
         # Add bonuses to eval
         eval += (
-            wpBonus - bpBonus +
-            wkBonus - bkBonus +
-            wbBonus - bbBonus +
-            wrBonus - brBonus +
-            wqBonus - bqBonus +
-            wkingBonus - bkingBonus
+            wpBonus     - bpBonus +
+            wkBonus     - bkBonus +
+            wbBonus     - bbBonus +
+            wrBonus     - brBonus +
+            wqBonus     - bqBonus +
+            wkingBonus  - bkingBonus
             )
         # Assign eval to node
-        node.eval = eval
+        if board.turn:
+            return int(eval) + tab_eval
+        else:
+           return -int(eval) + tab_eval
 
 def pawnBonus(pawns, king, color):
     pBonus = 0
@@ -379,82 +362,70 @@ def fen_to_pieces_input(fen):
     
     return input
 
-def nn_heuristic(node, options, model):
+def nn_heuristic(fen, options, model):
+    board = chess.Board(fen)
+
     # special eval conditions
-    if node.board.is_game_over():
-        if node.board.is_checkmate() and node.board.turn:
-            node.eval = -25500
-            return
-        elif node.board.is_checkmate() and (not node.board.turn):
-            node.eval = 25500
-            return
-        elif node.board.is_stalemate():
-            node.eval = 0
-            return
-    elif node.board.is_insufficient_material():
-            node.eval = 0
-            return
-    elif node.board.can_claim_threefold_repetition():
-            node.eval = 0
-            return
-    elif node.board.can_claim_fifty_moves() and options.fiftyMoveRule:
-            node.eval = 0
-            return
+    if board.is_game_over():
+        if board.is_checkmate():
+            return -25500
+        else:
+            return 0
+    
+    if options.fiftyMoveRule and int(fen.split(' ')[4]) >= 100:
+        return 0
     
     # normal eval conditions
     else:
         eval = 0
-        map = node.board.piece_map()
+        map = board.piece_map()
 
         # tablebase probing
         if len(map) <= options.syzygyProbeLimit and options.syzygyPath != '<empty>':
             with chess.syzygy.open_tablebase(options.syzygyPath, load_wdl=True, max_fds=128) as tablebase:
-                wdl = tablebase.get_wdl(node.board)
-                #dtz = tablebase.get_dtz(node.board)
+                wdl = tablebase.get_wdl(board)
                 if wdl != None:
-                    node.tablebasePosition = True
-                    if options.fiftyMoveRule and wdl < -1:
-                        if node.board.turn:
-                            node.eval = -25500
-                        else:
-                            node.eval = 25500
-                        return
-                    elif options.fiftyMoveRule and wdl > 1:
-                        if node.board.turn:
-                            node.eval = 25500
-                        else:
-                            node.eval = -25500
-                        return
-                    elif not options.fiftyMoveRule and wdl > 0:
-                        if node.board.turn:
-                            node.eval = 25500
-                        else:
-                            node.eval = -25500
-                        return
-                    elif not options.fiftyMoveRule and wdl < -0:
-                        if node.board.turn:
-                            node.eval = -25500
-                        else:
-                            node.eval = 25500
-                        return
+                    if options.fiftyMoveRule and wdl == -2:
+                        eval = -12800
+                    elif options.fiftyMoveRule and wdl == 2:
+                        eval = 12800
+                    elif not options.fiftyMoveRule and wdl == 1:
+                        eval = 12800
+                    elif not options.fiftyMoveRule and wdl == -1:
+                        eval = -12800
                     else:
-                        node.eval = 0
-                        return
+                        return 0
             tablebase.close()
-
+        
+        tab_eval = eval
         # create data to pass to net
         if options.network == "Classification":
-            data = np.array([fen_to_input(node.board.fen())])
+            data = np.array([fen_to_input(fen)])
             eval = (model.predict_classes(data)[0] - 3)*100 + randrange(-50,51,1)
-            node.eval = eval
+            if board.turn:
+                return int(eval) + tab_eval
+            else:
+                return -int(eval) + tab_eval
         elif 'model4_50k_wrong' in options.modelFile:
-            data = np.array([fen_to_pieces_input(node.board.fen())])
+            data = np.array([fen_to_pieces_input(fen)])
             eval = model.predict(data)
-            node.eval = round(eval[0][0]*2000)
+            if board.turn:
+                return int(round(eval[0][0]*2000)) + tab_eval
+            else:
+                return -int(round(eval[0][0]*2000)) + tab_eval
         else:
-            data = np.array([fen_to_input(node.board.fen())])
+            data = np.array([fen_to_input(fen)])
             eval = model.predict(data)
-            node.eval = round(eval[0][0]*2000)
+            if board.turn:
+                return int(round(eval[0][0]*2000)) + tab_eval
+            else:
+                return -int(round(eval[0][0]*2000)) + tab_eval
 
-def random_heuristic(node):
-    node.eval = uniform(-2000, 2000)
+def random_heuristic():
+    return int(uniform(0, 2000))
+
+if __name__ == '__main__':
+    from main import options
+    opt = options()
+    h = heuristic('6q1/K5k1/8/8/8/8/8/8 w - - 99 177', opt)
+    print(h)

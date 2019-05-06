@@ -1,72 +1,236 @@
-import math
+import logging
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
+
+import timemanagement as tm
 import heuristic
+import time
+from chess import Board, Move
+from threading import Timer
+from keras.models import load_model
+from keras.backend import clear_session
 
-# Various search algorithms
+class Node:
+    def __init__(self, fen):
+        self.position = fen
+        self.move = None
+        self.eval = None
+        self.next = []
+        self.previous = []
 
-# CLASSES
-class searchValues:
-    def __init__(self):
-        self.bestValue = None
-        self.bestMove = None
-        self.pv = []
+def main(goParams, options):
+    # initialize values
+    root = goParams.root
+    depth = 0
+    if root.position.split(' ')[1] == 'w':
+        root_turn = True
+    else:
+        root_turn = False
 
-# FUNCTIONS
-def search(tree, options):
-    if options.searchAlgorithm in ['AlphaBeta', 'alphabeta']:
-        sV = alphaBeta(tree.root, -math.inf, math.inf, tree.root.board.turn, options.flag)
-    elif options.searchAlgorithm in ['MCTS', 'mcts']:
-        sV = MCTS(tree.root, tree.root.board.turn)
-    
-    if sV != None and options.flag.is_set():
-        # eval should be given from point of view of side to move (don't like it but...)
-        if tree.root.board.turn:
-            tree.bestEval = sV.bestValue
+    # time management + timer
+    start = time.time()
+    timeForMove = tm.timeForMove(goParams, options, root_turn)
+    if timeForMove > 0:
+        timer = Timer(timeForMove, clearFlag, args=[options.flag])
+        timer.start()
+
+    # load model if needed
+    if options.heuristic == 'NeuralNetwork' and options.network == 'Regression':
+        if options.modelFile == '<default>':
+            options.model = load_model('regression.h5')
         else:
-            tree.bestEval = -sV.bestValue
-            
-        tree.bestMove = sV.bestMove
-        tree.pv = sV.pv
-    else:
-        return
+             options.model = load_model(options.modelFile)
+    elif options.heuristic == 'NeuralNetwork' and options.network == 'Classification':
+        if options.modelFile == '<default>':
+             options.model = load_model('classification.h5')
+        else:
+             options.model = load_model(options.modelFile)
 
-def alphaBeta(node, alpha, beta, turn, flag):
+    # main loop of iterative expansion
+    while conditionsMet(depth, goParams, options.flag):
+        # search
+        temp_eval, temp_nodes_count, temp_pv = negamax(root, depth+1, -100000, 100000, options.flag, options)
+
+        if options.flag.is_set():
+            eval = temp_eval
+            pv = temp_pv
+            nodes_count = temp_nodes_count
+            depth += 1
+
+            current_time = time.time() - start + 0.001
+            print(
+                'info depth', depth, #'seldepth', len(pv),
+                'score cp', int(eval), 'nodes', nodes_count,
+                'nps', int(nodes_count/current_time), 'time', round(1000*current_time),
+                'pv', ' '.join([str(item) for item in pv]),
+                flush=True
+                )
+
+    print('bestmove', pv[0], flush=True)
+    options.model = None
+    clear_session()
+
+def clearFlag(flag):
+        flag.clear()
+
+def conditionsMet(depth, goParams, flag):
+    if depth == goParams.depth or not flag.is_set():
+        return False
+    else:
+        return True
+
+def negamax(node, depth, alpha, beta, flag, options):
+    # flag check
     if not flag.is_set():
-        return None
+        return 0, 0, []
 
-    if node.children == []:
-        currentValues = searchValues()
-        currentValues.bestValue = node.eval
-        return currentValues
+    # leaf node
+    if(depth == 0):
+        # 3-fold repetition check
+        fen = node.position.split(' ')
+        prev = ' '.join(fen[:2])
 
-    if turn:
-        currentValues = searchValues()
-        currentValues.bestValue = -math.inf
-        for each in node.children:
-            previousValues = alphaBeta(each, alpha, beta, not turn, flag)
-            alpha = max(alpha, previousValues.bestValue)
-            if currentValues.bestValue < previousValues.bestValue:
-                currentValues.bestValue = previousValues.bestValue
-                currentValues.bestMove = each.board.peek()
-                currentValues.pv = previousValues.pv
-                currentValues.pv.insert(0, currentValues.bestMove.uci())
-            if beta <= alpha:
-                break
-        return currentValues
+        if prev in node.previous:
+            return 0, 1, []
+
+        # heuristic
+        if options.quiescence:
+            ev, nodes = quiesce(node.position, alpha, beta, flag, options)
+            return ev, nodes, []
+        else:
+            if options.heuristic == 'NeuralNetwork':
+                ev = heuristic.nn_heuristic(node.position, options, options.model)
+            elif options.heuristic == 'Random':
+                ev = heuristic.random_heuristic()
+            else:
+                ev = heuristic.heuristic(node.position, options)
+
+            node.eval = ev
+            return ev, 1, []
+
+    # expansion
+    if node.next == []:
+        board = Board(node.position)
+        legal = board.legal_moves
+        fen = node.position.split(' ')
+        prev = ' '.join(fen[:2])
+
+        # solve problem of no legal moves
+        if legal.count() == 0:
+            # 3-fold repetition check
+            if prev in node.previous:
+                return 0, 1, []
+
+            # heuristic
+            if options.heuristic == 'NeuralNetwork':
+                ev = heuristic.nn_heuristic(node.position, options, options.model)
+            elif options.heuristic == 'Random':
+                ev = heuristic.random_heuristic()
+            else:
+                ev = heuristic.heuristic(node.position, options)
+
+            node.eval = ev
+            return ev, 1, []
+
+        for move in legal:
+            board.push(move)
+            new = Node(board.fen())
+            new.move = move.uci()
+            board.pop()
+            new.previous = node.previous.copy()
+            new.previous.append(prev)
+            node.next.append(new)
+
+    # search
+    best_pv = []
+    nodes = 0
+    for new in node.next:
+        score, count, pv = negamax(new, depth-1, -beta, -alpha, flag, options)
+        score = -score
+        nodes += count
+        pv.insert(0, new.move)
+
+        if(score >= beta):
+            return beta, nodes, []
+        if(score > alpha):
+            alpha = score
+            best_pv = pv
+
+    return alpha, nodes, best_pv
+
+def quiesce(fen, alpha, beta, flag, options):
+    # flag check
+    if not flag.is_set():
+        return 0, 0
+
+    # heuristic
+    if options.heuristic == 'NeuralNetwork':
+        stand_pat = heuristic.nn_heuristic(fen, options, options.model)
+    elif options.heuristic == 'Random':
+        stand_pat = heuristic.random_heuristic()
     else:
-        currentValues = searchValues()
-        currentValues.bestValue = math.inf
-        for each in node.children:
-            previousValues = alphaBeta(each, alpha, beta, not turn, flag)
-            beta = min(beta, previousValues.bestValue)
-            if currentValues.bestValue > previousValues.bestValue:
-                currentValues.bestValue = previousValues.bestValue
-                currentValues.bestMove = each.board.peek()
-                currentValues.pv = previousValues.pv
-                currentValues.pv.insert(0, currentValues.bestMove.uci())
-            if beta <= alpha:
-                break
-        return currentValues
+        stand_pat = heuristic.heuristic(fen, options)
+    
+    nodes = 1
 
-def MCTS(tree, turn):
-    currentValues = searchValues()
-    return currentValues
+    if(stand_pat >= beta):
+        return beta, nodes
+    
+    board = Board(fen)
+    if len(board.piece_map()) > 8:
+        delta = True
+    else:
+        delta = False
+
+    if delta:
+        # full delta pruning
+        delta = 1000
+
+        if (stand_pat < alpha - delta):
+            return alpha, nodes
+
+    if(stand_pat > alpha):
+        alpha = stand_pat
+
+    # expansion and search
+    legal = board.legal_moves
+    for move in legal:
+        if delta:
+            # delta pruning
+            value = value_captured_piece(board.piece_type_at(move.to_square))+200
+            if (stand_pat + value < alpha):
+                continue
+        
+        board.push(move)
+        new = board.copy()
+        board.pop()
+        if board.is_capture(move):# or new.is_check() or board.is_check():
+            score, count = quiesce(new.fen(), -beta, -alpha, flag, options)
+            score = -score
+            nodes += count
+
+            if(score >= beta):
+                return beta, nodes
+            if(score > alpha):
+                alpha = score
+                
+    return alpha, nodes
+
+def value_captured_piece(piece):
+    if piece == 1:
+        return 100
+    elif piece == 2 or piece == 3:
+        return 350
+    elif piece == 4:
+        return 525
+    else:
+        return 1000
+
+if __name__ == '__main__':
+    from main import options
+    from threading import Event
+    opt = options()
+    flag = Event()
+    flag.set()
+
+    h, n = quiesce('r1b1kr2/1pp1n1pp/2q5/p4p1n/P4B2/1PPB1N2/4QPP1/RNK1R3 w q - 0 18 ', -100000, 100000, flag, opt)
+    print(h)
