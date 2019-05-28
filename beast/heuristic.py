@@ -229,7 +229,7 @@ def bishopBonus(bishops, king, color):
 def rookBonus(rooks, king, color):
     rBonus = 0
     for each in rooks:
-        # occupying center bonus
+        # occupying center files bonus
         if each%8 in range(3,5):
             rBonus += rookCenterW
         if each%8 in range(2,6):
@@ -399,7 +399,11 @@ def nn_heuristic(fen, options, model):
         
         tab_eval = eval
         # create data to pass to net
-        if options.network == "Classification":
+        if '3-100k' in options.modelFile:
+            data = np.array([fen_to_input(fen)])
+            eval = (model.predict_classes(data)[0] - 3)*100 + randrange(-50,51,1)
+            return int(eval) + tab_eval
+        elif options.network == "Classification":
             data = np.array([fen_to_input(fen)])
             eval = (model.predict_classes(data)[0] - 3)*100 + randrange(-50,51,1)
             if board.turn:
@@ -413,6 +417,10 @@ def nn_heuristic(fen, options, model):
                 return int(round(eval[0][0]*2000)) + tab_eval
             else:
                 return -int(round(eval[0][0]*2000)) + tab_eval
+        elif '100k' in options.modelFile:
+            data = np.array([fen_to_input(fen)])
+            eval = model.predict(data)
+            return int(round(eval[0][0]*2000)) + tab_eval
         else:
             data = np.array([fen_to_input(fen)])
             eval = model.predict(data)

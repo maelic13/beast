@@ -9,7 +9,7 @@ from os import environ
 environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # VARIABLES
-engineName = 'Beast 0.09'
+engineName = 'Beast 0.10'
 author = 'M. Macurek'
 
 # CLASSES

@@ -64,6 +64,8 @@ def main(goParams, options):
                 'pv', ' '.join([str(item) for item in pv]),
                 flush=True
                 )
+            if eval > 20000 or eval < -20000:
+                break
 
     print('bestmove', pv[0], flush=True)
     options.model = None
@@ -88,10 +90,9 @@ def negamax(node, depth, alpha, beta, flag, options):
         # 3-fold repetition check
         fen = node.position.split(' ')
         prev = ' '.join(fen[:2])
-
         if prev in node.previous:
             return 0, 1, []
-
+            
         # heuristic
         if options.quiescence:
             ev, nodes = quiesce(node.position, alpha, beta, flag, options)
@@ -183,9 +184,7 @@ def quiesce(fen, alpha, beta, flag, options):
 
     if delta:
         # full delta pruning
-        delta = 1000
-
-        if (stand_pat < alpha - delta):
+        if (stand_pat < alpha - 1000):
             return alpha, nodes
 
     if(stand_pat > alpha):
@@ -194,16 +193,17 @@ def quiesce(fen, alpha, beta, flag, options):
     # expansion and search
     legal = board.legal_moves
     for move in legal:
-        if delta:
-            # delta pruning
-            value = value_captured_piece(board.piece_type_at(move.to_square))+200
-            if (stand_pat + value < alpha):
-                continue
-        
         board.push(move)
         new = board.copy()
         board.pop()
-        if board.is_capture(move):# or new.is_check() or board.is_check():
+
+        if board.is_capture(move) or new.is_check():
+            # delta pruning
+            if delta and board.is_capture(move):
+                value = value_captured_piece(board.piece_type_at(move.to_square))+200
+                if (stand_pat + value < alpha):
+                    continue
+
             score, count = quiesce(new.fen(), -beta, -alpha, flag, options)
             score = -score
             nodes += count
@@ -222,8 +222,10 @@ def value_captured_piece(piece):
         return 350
     elif piece == 4:
         return 525
-    else:
+    elif piece == 5:
         return 1000
+    else:
+        return 0
 
 if __name__ == '__main__':
     from main import options
