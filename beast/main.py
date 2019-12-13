@@ -6,7 +6,40 @@ from chess import Board, Move
 from search import Node
 
 from os import environ
+environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+# VARIABLES
+engineName = 'Beast 0.10'
+author = 'M. Macurek'
+
+# CLASSES
+class goParameters:
+	def __init__(self):
+		# position
+		self.root = Node('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+
+		# time parameters
+		self.wtime = None
+		self.btime = None
+		self.winc = None
+		self.binc = None
+		self.movesToGo = None
+		self.movetime = None
+
+		# depth parameters
+		self.depth = None
+		self.nodes = None
+		self.mate = None
+		
+		# continuous parameters
+		self.infinite = False
+		self.ponder = False
+
+	def reset(self):
+		self.moves = ''
+		self.wtime = None
+		self.btime = None
+		self.winc = None
 		self.binc = None
 		self.ponder = False
 		self.movesToGo = None
