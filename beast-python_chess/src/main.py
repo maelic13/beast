@@ -1,4 +1,4 @@
-from threading import Thread, Event, Timer
+from threading import Thread, Event
 from queue import Queue
 import cmd
 import search

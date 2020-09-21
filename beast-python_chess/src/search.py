@@ -4,7 +4,7 @@ logging.getLogger('tensorflow').setLevel(logging.FATAL)
 import timemanagement as tm
 import heuristic
 import time
-from chess import Board, Move
+from chess import Board
 from threading import Timer
 from keras.models import load_model
 from keras.backend import clear_session
