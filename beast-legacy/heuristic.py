@@ -36,6 +36,7 @@ queenDistanceW = 8
 kingCenterWvalue = 8
 kingDistanceW = 5
 
+
 # FUNCTIONS
 def heuristic(fen, options):
     board = chess.Board(fen)
@@ -163,6 +164,7 @@ def heuristic(fen, options):
         else:
            return -int(eval) + tab_eval
 
+
 def pawnBonus(pawns, king, color):
     pBonus = 0
     for each in pawns:
@@ -193,6 +195,7 @@ def pawnBonus(pawns, king, color):
 
     return pBonus
 
+
 def knightBonus(knights, king, color):
     kBonus = 0
     for each in knights:
@@ -208,6 +211,7 @@ def knightBonus(knights, king, color):
         distance = abs(int(each/8) - int(king[0]/8)) + abs(each%8 - king[0]%8)
         kBonus += 14/distance * knightDistanceW - knightDistanceW
     return kBonus
+
 
 def bishopBonus(bishops, king, color):
     bBonus = 0
@@ -225,6 +229,7 @@ def bishopBonus(bishops, king, color):
         bBonus += 14/distance * bishopDistanceW - bishopDistanceW
     return bBonus
 
+
 def rookBonus(rooks, king, color):
     rBonus = 0
     for each in rooks:
@@ -241,6 +246,7 @@ def rookBonus(rooks, king, color):
         rBonus += 14/distance * rookDistanceW - rookDistanceW
     return rBonus
 
+
 def queenBonus(queens, king, color):
     qBonus = 0
     for each in queens:
@@ -256,6 +262,7 @@ def queenBonus(queens, king, color):
         distance = abs(int(each/8) - int(king[0]/8)) + abs(each%8 - king[0]%8)
         qBonus += 14/distance * queenDistanceW - queenDistanceW
     return qBonus
+
 
 def kingBonus(king, oponentKing, noQueen):
     kingBonus = 0
@@ -277,6 +284,7 @@ def kingBonus(king, oponentKing, noQueen):
         distance = abs(int(each/8) - int(oponentKing[0]/8)) + abs(each%8 - oponentKing[0]%8)
         kingBonus += 14/distance * kingDistanceW - kingDistanceW
     return kingBonus
+
 
 def fen_to_input(fen):
     fen = fen.split(' ')
@@ -325,6 +333,7 @@ def fen_to_input(fen):
 
     return inp
 
+
 def fen_to_pieces_input(fen):
     board = chess.Board(fen)
     input = np.zeros((8,8,7), dtype=int)
@@ -360,6 +369,7 @@ def fen_to_pieces_input(fen):
             input[i//8,i%8,6] = 1
     
     return input
+
 
 def nn_heuristic(fen, options, model):
     board = chess.Board(fen)
@@ -428,8 +438,10 @@ def nn_heuristic(fen, options, model):
             else:
                 return -int(round(eval[0][0]*2000)) + tab_eval
 
+
 def random_heuristic():
     return int(uniform(0, 2000))
+
 
 if __name__ == '__main__':
     from main import options

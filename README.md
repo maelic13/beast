@@ -1,4 +1,4 @@
-# Beast using python-chess
+# Beast Legacy
 UCI compatible chess engine
 - alpha-beta pruning, quiescence search, delta pruning
 - 50-moves rule, 3-fold repetition
@@ -11,6 +11,6 @@ UCI compatible chess engine
 New python version, built from scratch
 - project started
 
-# Beast CPP
+# Beast C++
 New C++ version, built from scratch
 - project started
