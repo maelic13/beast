@@ -1,13 +1,16 @@
 import logging
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
-import timemanagement as tm
-import heuristic
 import time
+
 from chess import Board
+from tensorflow.keras.models import load_model
+from tensorflow.keras.backend import clear_session
 from threading import Timer
-from keras.models import load_model
-from keras.backend import clear_session
+
+import heuristic
+import timemanagement as tm
+
 
 class Node:
     def __init__(self, fen):
@@ -16,6 +19,7 @@ class Node:
         self.eval = None
         self.next = []
         self.previous = []
+
 
 def main(goParams, options):
     # initialize values
@@ -71,14 +75,17 @@ def main(goParams, options):
     options.model = None
     clear_session()
 
+
 def clearFlag(flag):
         flag.clear()
+
 
 def conditionsMet(depth, goParams, flag):
     if depth == goParams.depth or not flag.is_set():
         return False
     else:
         return True
+
 
 def negamax(node, depth, alpha, beta, flag, options):
     # flag check
@@ -158,6 +165,7 @@ def negamax(node, depth, alpha, beta, flag, options):
 
     return alpha, nodes, best_pv
 
+
 def quiesce(fen, alpha, beta, flag, options):
     # flag check
     if not flag.is_set():
@@ -215,6 +223,7 @@ def quiesce(fen, alpha, beta, flag, options):
                 
     return alpha, nodes
 
+
 def value_captured_piece(piece):
     if piece == 1:
         return 100
@@ -226,6 +235,7 @@ def value_captured_piece(piece):
         return 1000
     else:
         return 0
+
 
 if __name__ == '__main__':
     from main import options

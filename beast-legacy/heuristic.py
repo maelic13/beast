@@ -1,12 +1,11 @@
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
+import numpy as np
+
 import chess
 import chess.syzygy
-from keras.models import load_model
-from random import uniform
-import numpy as np
-import time
-from random import randrange
+from random import uniform, randrange
 
 ## VARIABLES
 # Piece values
