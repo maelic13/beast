@@ -1,4 +1,4 @@
 cd venv/scripts
-pyinstaller --onefile ../../beast.py --workpath ../../ --distpath ../../build
+pyinstaller --onefile ../../src/beast.py --workpath ../../ --distpath ../../build
 cd ../..
 rmdir /q/s beast
