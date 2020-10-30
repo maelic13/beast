@@ -7,10 +7,10 @@ UCI compatible chess engine
 - 3 types of heuristic (classic, neural network, random play)
 - syzygy tablebases support
 
-# Beast
+# Beast Python
 New python version, built from scratch
 - project started
 
-# Beast C++
-New C++ version, built from scratch
+# Beast Rust
+New Rust version, built from scratch
 - project started
