@@ -1,9 +1,5 @@
 # Beast
-New python version, built from scratch
-- project started
-
-# Beast Legacy
-UCI compatible chess engine
+UCI compatible chess engine with neural network support
 - alpha-beta pruning, quiescence search, delta pruning
 - 50-moves rule, 3-fold repetition
 - infinite analysis mode
