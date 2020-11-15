@@ -9,11 +9,10 @@ import numpy as np
 import os
 import chess
 import time
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Conv2D, Flatten, BatchNormalization, Dropout
-from keras.utils import plot_model
-from keras.callbacks import EarlyStopping
-from keras.optimizers import Adam
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Activation, Conv2D, Flatten, BatchNormalization, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
