@@ -65,7 +65,7 @@ class options():
         self.quiescence = True
         self.heuristic = 'Classic'				# type of heuristic
         self.network = 'Regression'				# type of neural network system
-        self.modelFile = '<default>'
+        self.modelFile = 'nets/bnn_2-100-2.h5'
         self.model = None
 
     def set(self, option, value):

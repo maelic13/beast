@@ -9,3 +9,5 @@ pip install pyinstaller --upgrade
 pip install pylint --upgrade
 pip install python-chess --upgrade
 pip install tensorflow --upgrade
+pip install sklearn --upgrade
+pip install matplotlib --upgrade
