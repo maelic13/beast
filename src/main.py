@@ -10,8 +10,8 @@ from search import Node
 from threading import Thread, Event
 
 # VARIABLES
-engineName = 'Beast 0.10'
-author = 'M. Macurek'
+engineName = 'Beast 1.0'
+author = 'Miloslav Macurek'
 
 
 # CLASSES
