@@ -42,17 +42,18 @@ def main(goParams, options):
         if options.modelFile == '<default>':
             options.model = load_model('regression.h5')
         else:
-             options.model = load_model(options.modelFile)
+            options.model = load_model(options.modelFile)
     elif options.heuristic == 'NeuralNetwork' and options.network == 'Classification':
         if options.modelFile == '<default>':
-             options.model = load_model('classification.h5')
+            options.model = load_model('classification.h5')
         else:
-             options.model = load_model(options.modelFile)
+            options.model = load_model(options.modelFile)
 
     # main loop of iterative expansion
     while conditionsMet(depth, goParams, options.flag):
         # search
-        temp_eval, temp_nodes_count, temp_pv = negamax(root, depth+1, -100000, 100000, options.flag, options)
+        temp_eval, temp_nodes_count, temp_pv = negamax(
+            root, depth + 1, -100000, 100000, options.flag, options)
 
         if options.flag.is_set():
             eval = temp_eval
@@ -62,12 +63,11 @@ def main(goParams, options):
 
             current_time = time.time() - start + 0.001
             print(
-                'info depth', depth, #'seldepth', len(pv),
+                'info depth', depth,  # 'seldepth', len(pv),
                 'score cp', int(eval), 'nodes', nodes_count,
-                'nps', int(nodes_count/current_time), 'time', round(1000*current_time),
+                'nps', int(nodes_count / current_time), 'time', round(1000 * current_time),
                 'pv', ' '.join([str(item) for item in pv]),
-                flush=True
-                )
+                flush=True)
             if eval > 20000 or eval < -20000:
                 break
 
@@ -77,7 +77,7 @@ def main(goParams, options):
 
 
 def clearFlag(flag):
-        flag.clear()
+    flag.clear()
 
 
 def conditionsMet(depth, goParams, flag):
@@ -99,7 +99,7 @@ def negamax(node, depth, alpha, beta, flag, options):
         prev = ' '.join(fen[:2])
         if prev in node.previous:
             return 0, 1, []
-            
+
         # heuristic
         if options.quiescence:
             ev, nodes = quiesce(node.position, alpha, beta, flag, options)
@@ -152,7 +152,7 @@ def negamax(node, depth, alpha, beta, flag, options):
     best_pv = []
     nodes = 0
     for new in node.next:
-        score, count, pv = negamax(new, depth-1, -beta, -alpha, flag, options)
+        score, count, pv = negamax(new, depth - 1, -beta, -alpha, flag, options)
         score = -score
         nodes += count
         pv.insert(0, new.move)
@@ -178,12 +178,12 @@ def quiesce(fen, alpha, beta, flag, options):
         stand_pat = heuristic.random_heuristic()
     else:
         stand_pat = heuristic.heuristic(fen, options)
-    
+
     nodes = 1
 
     if(stand_pat >= beta):
         return beta, nodes
-    
+
     board = Board(fen)
     if len(board.piece_map()) > 8:
         delta = True
@@ -208,7 +208,7 @@ def quiesce(fen, alpha, beta, flag, options):
         if board.is_capture(move) or new.is_check():
             # delta pruning
             if delta and board.is_capture(move):
-                value = value_captured_piece(board.piece_type_at(move.to_square))+200
+                value = value_captured_piece(board.piece_type_at(move.to_square)) + 200
                 if (stand_pat + value < alpha):
                     continue
 
@@ -220,7 +220,6 @@ def quiesce(fen, alpha, beta, flag, options):
                 return beta, nodes
             if(score > alpha):
                 alpha = score
-                
     return alpha, nodes
 
 
@@ -235,14 +234,3 @@ def value_captured_piece(piece):
         return 1000
     else:
         return 0
-
-
-if __name__ == '__main__':
-    from main import options
-    from threading import Event
-    opt = options()
-    flag = Event()
-    flag.set()
-
-    h, n = quiesce('r1b1kr2/1pp1n1pp/2q5/p4p1n/P4B2/1PPB1N2/4QPP1/RNK1R3 w q - 0 18 ', -100000, 100000, flag, opt)
-    print(h)
