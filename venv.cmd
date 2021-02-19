@@ -1,13 +1,11 @@
-python -m venv ./venv
-cd venv/scripts
+@echo off
+python -m venv venv
+CALL venv\scripts\activate.bat
+
 python -m pip install --upgrade pip
 pip install setuptools --upgrade
+pip install -r requirements.txt
 
-pip install flake8 --upgrade
-pip install numpy --upgrade
-pip install pyinstaller --upgrade
-pip install pylint --upgrade
-pip install python-chess --upgrade
-pip install tensorflow --upgrade
-pip install sklearn --upgrade
-pip install matplotlib --upgrade
+echo.
+echo Installation completed.
+pause

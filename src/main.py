@@ -204,7 +204,7 @@ class uciLoop(cmd.Cmd):
 
     def do_ucinewgame(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('ucinewgame ')
             f.write(arg)
             f.write('\n')
@@ -213,7 +213,7 @@ class uciLoop(cmd.Cmd):
 
     def do_position(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('position ')
             f.write(arg)
             f.write('\n')
