@@ -118,12 +118,11 @@ def heuristic(fen, options):
 
         # Initial eval - adding value of pieces on board
         tab_eval = eval
-        eval = (
-            len(wPawns) * pawn - len(bPawns) * pawn
-            + len(wKnights) * knight - len(bKnights) * knight
-            + len(wBishops) * bishop - len(bBishops) * bishop
-            + len(wRooks) * rook - len(bRooks) * rook
-            + len(wQueens) * queen - len(bQueens) * queen)
+        eval = (len(wPawns) * pawn - len(bPawns) * pawn
+                + len(wKnights) * knight - len(bKnights) * knight
+                + len(wBishops) * bishop - len(bBishops) * bishop
+                + len(wRooks) * rook - len(bRooks) * rook
+                + len(wQueens) * queen - len(bQueens) * queen)
 
         # BUNUSES
         # Pawns
@@ -151,13 +150,12 @@ def heuristic(fen, options):
         bkingBonus = kingBonus(bKing, wKing, wQueens == [])
 
         # Add bonuses to eval
-        eval += (
-            wpBonus - bpBonus +
-            wkBonus - bkBonus +
-            wbBonus - bbBonus +
-            wrBonus - brBonus +
-            wqBonus - bqBonus +
-            wkingBonus - bkingBonus)
+        eval += (wpBonus - bpBonus
+                 + wkBonus - bkBonus
+                 + wbBonus - bbBonus
+                 + wrBonus - brBonus
+                 + wqBonus - bqBonus
+                 + wkingBonus - bkingBonus)
         # Assign eval to node
         if board.turn:
             return int(eval) + tab_eval
