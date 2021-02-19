@@ -124,11 +124,9 @@ class options():
 class uciLoop(cmd.Cmd):
     prompt = ''
 
-    #f = open('log.txt','w').close()
-
     def do_uci(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('uci ')
             f.write(arg)
             f.write('\n')
@@ -136,21 +134,35 @@ class uciLoop(cmd.Cmd):
         print('id name', engineName)
         print('id author', author)
         print()
-        print('option name Threads type spin default', opt.threads,'min 1 max 1')
-        print('option name TimeFlex type spin default', opt.timeFlex,'min 0 max 1000')										# time flexibility in ms so engine could make a move in time and did not lose on time
-        print('option name SearchAlgorithm type combo default', opt.searchAlgorithm,'var AlphaBeta')# var MCTS')			# types of search algorithms
-        print('option name Quiescence type check default', opt.quiescence)
-        print('option name SyzygyPath type string default', opt.syzygyPath)													# path to syzygy tablebases
-        print('option name SyzygyProbeLimit type spin default', opt.syzygyProbeLimit,'min 0 max 7')							# probe limit for syzygy
-        print('option name Syzygy50MoveRule type check default', opt.fiftyMoveRule)
-        print('option name Heuristic type combo default', opt.heuristic,'var Classic var NeuralNetwork var Random')
-        print('option name Network type combo default', opt.network,'var Regression var Classification')
-        print('option name ModelFile type string default', opt.modelFile)
+        print('option name Threads type spin default',
+              opt.threads, 'min 1 max 1')
+        # time flexibility in ms so engine could make a move in time and did not lose on time
+        print('option name TimeFlex type spin default',
+              opt.timeFlex, 'min 0 max 1000')
+        # types of search algorithms
+        print('option name SearchAlgorithm type combo default',
+              opt.searchAlgorithm, 'var AlphaBeta')
+        print('option name Quiescence type check default',
+              opt.quiescence)
+        # path to syzygy tablebases
+        print('option name SyzygyPath type string default',
+              opt.syzygyPath)
+        # probe limit for syzygy
+        print('option name SyzygyProbeLimit type spin default',
+              opt.syzygyProbeLimit, 'min 0 max 7')
+        print('option name Syzygy50MoveRule type check default',
+              opt.fiftyMoveRule)
+        print('option name Heuristic type combo default',
+              opt.heuristic, 'var Classic var NeuralNetwork var Random')
+        print('option name Network type combo default',
+              opt.network, 'var Regression var Classification')
+        print('option name ModelFile type string default',
+              opt.modelFile)
         print('uciok')
 
     def do_quit(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('quit ')
             f.write(arg)
             f.write('\n')
@@ -159,7 +171,7 @@ class uciLoop(cmd.Cmd):
 
     def do_setoption(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('setoption ')
             f.write(arg)
             f.write('\n')
@@ -174,7 +186,7 @@ class uciLoop(cmd.Cmd):
 
     def do_isready(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('isready ')
             f.write(arg)
             f.write('\n')
@@ -183,7 +195,7 @@ class uciLoop(cmd.Cmd):
 
     def do_go(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('go ')
             f.write(arg)
             f.write('\n')
@@ -195,7 +207,7 @@ class uciLoop(cmd.Cmd):
 
     def do_stop(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('stop ')
             f.write(arg)
             f.write('\n')
@@ -204,7 +216,7 @@ class uciLoop(cmd.Cmd):
 
     def do_ucinewgame(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('ucinewgame ')
             f.write(arg)
             f.write('\n')
@@ -213,14 +225,14 @@ class uciLoop(cmd.Cmd):
 
     def do_position(self, arg):
         if opt.debug:
-            f = open('log.txt','a')
+            f = open('log.txt', 'a')
             f.write('position ')
             f.write(arg)
             f.write('\n')
             f.close()
         try:
             [command, arguments] = arg.split(' ', 1)
-        except:
+        except ValueError:
             command = arg
             arguments = None
 
@@ -229,14 +241,14 @@ class uciLoop(cmd.Cmd):
                 arguments = arguments.split()
                 fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
                 moves = arguments[1:]
-            except:
+            except ValueError:
                 fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
                 moves = None
         elif command == 'fen':
             try:
                 [fen, moves] = arguments.split(' moves ')
                 moves = moves.split()
-            except:
+            except ValueError:
                 fen = arguments
                 moves = None
 
@@ -249,7 +261,7 @@ class uciLoop(cmd.Cmd):
 def get_root(fen, moves):
     board = Board(fen)
     root = Node(fen)
-    if not moves == None:
+    if moves is not None:
         for move in moves:
             fen = board.fen().split(' ')
             root.previous.append(' '.join(fen[:2]))
@@ -272,7 +284,7 @@ def parseParams(goParams, string):
             break
         try:
             [command, param, string] = string.split(' ', 2)
-        except:
+        except ValueError:
             [command, param] = string.split(' ', 1)
             run = False
 

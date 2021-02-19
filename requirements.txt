@@ -1,0 +1,8 @@
+flake8
+matplotlib
+numpy
+pyinstaller
+pylint
+python-chess
+sklearn
+tensorflow
