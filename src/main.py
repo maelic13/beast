@@ -10,7 +10,7 @@ from search import Node
 from threading import Thread, Event
 
 # VARIABLES
-engineName = 'Beast 1.0'
+engineName = 'Beast 1.01'
 author = 'Miloslav Macurek'
 
 
@@ -87,7 +87,7 @@ class options():
         elif option in ['SyzygyPath', 'syzzygypath']:
             self.syzygyPath = value.replace('\\', '/')
         elif option in ['SyzygyProbeLimit', 'syzygyprobelimit']:
-            self.syzygyProbeLimit = value
+            self.syzygyProbeLimit = int(value)
         elif option in ['quiescence', 'Quiescence']:
             if value in ['true', 'True', '1']:
                 self.quiescence = True
@@ -236,15 +236,14 @@ class uciLoop(cmd.Cmd):
             command = arg
             arguments = None
 
-        if command == 'startpos':
-            try:
-                arguments = arguments.split()
-                fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-                moves = arguments[1:]
-            except ValueError:
-                fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-                moves = None
-        elif command == 'fen':
+        if command == 'startpos' and arguments:
+            arguments = arguments.split()
+            fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+            moves = arguments[1:]
+        elif command and not arguments:
+            fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+            moves = None
+        else:
             try:
                 [fen, moves] = arguments.split(' moves ')
                 moves = moves.split()
