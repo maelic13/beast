@@ -1,8 +1,8 @@
 # set seeds for reproducibility of results
 from numpy.random import seed
 seed(42)
-from tensorflow import set_random_seed
-set_random_seed(42)
+import tensorflow
+tensorflow.random.set_seed(42)
 
 # classical imports
 import numpy as np
@@ -17,134 +17,139 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-## FUNCTIONS
+
+# FUNCTIONS
 def array_to_single(array):
     single = []
+    max_pos = 0
     for arr in array:
         val = 0
         for pos in range(0, len(arr)):
             if pos > val:
                 val = arr[pos]
-                max_pos = pos+1
+                max_pos = pos + 1
         single.append(max_pos)
     return single
 
+
 def cp_to_p(cp):
-    return 1/(1+10**(-cp/4))
+    return 1 / (1 + 10 ** (-cp / 4))
+
 
 def p_to_cp(p):
     if p != 1:
-        return 4*np.log10(p/(1-p))
+        return 4 * np.log10(p / (1 - p))
     else:
         return 128
 
+
 def fen_to_colors_input(fen):
     board = chess.Board(fen)
-    input = np.zeros((8,8,3), dtype=int)
+    input_planes = np.zeros((8, 8, 3), dtype=int)
 
-    for i in range(0,64):
+    for i in range(0, 64):
         if board.piece_at(i) == chess.Piece(chess.PAWN, chess.WHITE):
-            input[i//8,i%8,0] = 1
+            input_planes[i // 8, i % 8, 0] = 1
         elif board.piece_at(i) == chess.Piece(chess.PAWN, chess.BLACK):
-            input[i//8,i%8,1] = -1
+            input_planes[i // 8, i % 8, 1] = -1
         elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.WHITE):
-            input[i//8,i%8,0] = 2
+            input_planes[i // 8, i % 8, 0] = 2
         elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.BLACK):
-            input[i//8,i%8,1] = -2
+            input_planes[i // 8, i % 8, 1] = -2
         elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.WHITE):
-            input[i//8,i%8,0] = 3
+            input_planes[i // 8, i % 8, 0] = 3
         elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.BLACK):
-            input[i//8,i%8,1] = -3
+            input_planes[i // 8, i % 8, 1] = -3
         elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.WHITE):
-            input[i//8,i%8,0] = 4
+            input_planes[i // 8, i % 8, 0] = 4
         elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.BLACK):
-            input[i//8,i%8,1] = -4
+            input_planes[i // 8, i % 8, 1] = -4
         elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.WHITE):
-            input[i//8,i%8,0] = 5
+            input_planes[i // 8, i % 8, 0] = 5
         elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.BLACK):
-            input[i//8,i%8,1] = -5
+            input_planes[i // 8, i % 8, 1] = -5
         elif board.piece_at(i) == chess.Piece(chess.KING, chess.WHITE):
-            input[i//8,i%8,0] = 6
+            input_planes[i // 8, i % 8, 0] = 6
         elif board.piece_at(i) == chess.Piece(chess.KING, chess.BLACK):
-            input[i//8,i%8,1] = -6
+            input_planes[i // 8, i % 8, 1] = -6
         if not board.turn:
-            input[i//8,i%8,2] = -1
-    
-    return input
+            input_planes[i // 8, i % 8, 2] = -1
+    return input_planes
+
 
 def fen_to_pieces_input(fen):
     board = chess.Board(fen)
-    input = np.zeros((8,8,7), dtype=int)
+    input_planes = np.zeros((8, 8, 7), dtype=int)
 
-    for i in range(0,64):
+    for i in range(0, 64):
         if board.piece_at(i) == chess.Piece(chess.PAWN, chess.WHITE):
-            input[i//8,i%8,0] = 1
+            input_planes[i // 8, i % 8, 0] = 1
         elif board.piece_at(i) == chess.Piece(chess.PAWN, chess.BLACK):
-            input[i//8,i%8,0] = -1
+            input_planes[i // 8, i % 8, 0] = -1
         elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.WHITE):
-            input[i//8,i%8,1] = 1
+            input_planes[i // 8, i % 8, 1] = 1
         elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.BLACK):
-            input[i//8,i%8,1] = -1
+            input_planes[i // 8, i % 8, 1] = -1
         elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.WHITE):
-            input[i//8,i%8,2] = 1
+            input_planes[i // 8, i % 8, 2] = 1
         elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.BLACK):
-            input[i//8,i%8,2] = -1
+            input_planes[i // 8, i % 8, 2] = -1
         elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.WHITE):
-            input[i//8,i%8,3] = 1
+            input_planes[i // 8, i % 8, 3] = 1
         elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.BLACK):
-            input[i//8,i%8,3] = -1
+            input_planes[i // 8, i % 8, 3] = -1
         elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.WHITE):
-            input[i//8,i%8,4] = 1
+            input_planes[i // 8, i % 8, 4] = 1
         elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.BLACK):
-            input[i//8,i%8,4] = -1
+            input_planes[i // 8, i % 8, 4] = -1
         elif board.piece_at(i) == chess.Piece(chess.KING, chess.WHITE):
-            input[i//8,i%8,5] = 1
+            input_planes[i // 8, i % 8, 5] = 1
         elif board.piece_at(i) == chess.Piece(chess.KING, chess.BLACK):
-            input[i//8,i%8,5] = -1
+            input_planes[i // 8, i % 8, 5] = -1
         if not board.turn:
-            input[i//8,i%8,6] = -1
+            input_planes[i // 8, i % 8, 6] = -1
         else:
-            input[i//8,i%8,6] = 1
-    
-    return input
+            input_planes[i // 8, i % 8, 6] = 1
+    return input_planes
+
 
 def fen_to_just_pieces_input(fen):
     board = chess.Board(fen)
-    input = np.zeros((8,8,7), dtype=int)
+    input_planes = np.zeros((8, 8, 7), dtype=int)
 
-    for i in range(0,64):
+    for i in range(0, 64):
         if board.piece_at(i) == chess.Piece(chess.PAWN, chess.WHITE):
-            input[i//8,i%8,0] = 1
+            input_planes[i // 8, i % 8, 0] = 1
         elif board.piece_at(i) == chess.Piece(chess.PAWN, chess.BLACK):
-            input[i//8,i%8,0] = -1
+            input_planes[i // 8, i % 8, 0] = -1
         elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.WHITE):
-            input[i//8,i%8,1] = 1
+            input_planes[i // 8, i % 8, 1] = 1
         elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.BLACK):
-            input[i//8,i%8,1] = -1
+            input_planes[i // 8, i % 8, 1] = -1
         elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.WHITE):
-            input[i//8,i%8,2] = 1
+            input_planes[i // 8, i % 8, 2] = 1
         elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.BLACK):
-            input[i//8,i%8,2] = -1
+            input_planes[i // 8, i % 8, 2] = -1
         elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.WHITE):
-            input[i//8,i%8,3] = 1
+            input_planes[i // 8, i % 8, 3] = 1
         elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.BLACK):
-            input[i//8,i%8,3] = -1
+            input_planes[i // 8, i % 8, 3] = -1
         elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.WHITE):
-            input[i//8,i%8,4] = 1
+            input_planes[i // 8, i % 8, 4] = 1
         elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.BLACK):
-            input[i//8,i%8,4] = -1
+            input_planes[i // 8, i % 8, 4] = -1
         elif board.piece_at(i) == chess.Piece(chess.KING, chess.WHITE):
-            input[i//8,i%8,5] = 1
+            input_planes[i // 8, i % 8, 5] = 1
         elif board.piece_at(i) == chess.Piece(chess.KING, chess.BLACK):
-            input[i//8,i%8,5] = -1
+            input_planes[i // 8, i % 8, 5] = -1
         if not board.turn:
-            input[i//8,i%8,6] = -1
+            input_planes[i // 8, i % 8, 6] = -1
         else:
-            input[i//8,i%8,6] = 1
-    
-    return input
+            input_planes[i // 8, i % 8, 6] = 1
+    return input_planes
 
-def eval_to_7_class(eval):
+
+def eval_to_7_class(evaluation):
     # create data for evaluation into 7 groups
     # +-100     -> 3 -> draw
     # 100-300   -> 2,4
@@ -153,53 +158,54 @@ def eval_to_7_class(eval):
 
     output = np.zeros(7, dtype=float)
     # draw
-    if eval <= 100 and eval >= -100:
+    if 100 >= evaluation >= -100:
         output[3] = 1
-    #better for white
-    elif eval > 100 and  eval <= 300:
+    # better for white
+    elif 100 < evaluation <= 300:
         output[4] = 1
-    elif eval > 300 and eval <= 600:
+    elif 300 < evaluation <= 600:
         output[5] = 1
-    elif eval > 600:
+    elif evaluation > 600:
         output[6] = 1
     # better for black
-    elif eval < -100 and  eval >= -300:
+    elif -100 > evaluation >= -300:
         output[2] = 1
-    elif eval < -300 and eval >= -600:
+    elif -300 > evaluation >= -600:
         output[1] = 1
-    elif eval < -600:
+    elif evaluation < -600:
         output[0] = 1
-    
     return output
 
-def eval_to_sparse_7_class(eval):
+
+def eval_to_sparse_7_class(evaluation):
     # create data for evaluation into 7 groups
     # +-100     -> 3 -> draw
     # 100-300   -> 2,4
     # 300-600   -> 1,5
     # 600+      -> 0,6 -> won
 
+    output = 3
     # draw
-    if eval <= 100 and eval >= -100:
+    if 100 >= evaluation >= -100:
         output = 3
-    #better for white
-    elif eval > 100 and  eval <= 300:
+    # better for white
+    elif 100 < evaluation <= 300:
         output = 4
-    elif eval > 300 and eval <= 600:
+    elif 300 < evaluation <= 600:
         output = 5
-    elif eval > 600:
+    elif evaluation > 600:
         output = 6
     # better for black
-    elif eval < -100 and  eval >= -300:
+    elif -100 > evaluation >= -300:
         output = 2
-    elif eval < -300 and eval >= -600:
+    elif -300 > evaluation >= -600:
         output = 1
-    elif eval < -600:
+    elif evaluation < -600:
         output = 0
-    
     return output
 
-def eval_to_13_class(eval):
+
+def eval_to_13_class(evaluation):
     # create data for evaluation into 13 groups
     # +-50      -> 6 -> draw
     # 50-100    -> 5,7
@@ -209,41 +215,41 @@ def eval_to_13_class(eval):
     # 400-600   -> 1,11
     # 600+      -> 0,12
 
-
     output = np.zeros(13, dtype=float)
     # draw
-    if eval <= 50 and eval >= -50:
+    if 50 >= evaluation >= -50:
         output[6] = 1
-    #better for white
-    elif eval > 50 and  eval <= 100:
+    # better for white
+    elif 50 < evaluation <= 100:
         output[7] = 1
-    elif eval > 100 and eval <= 200:
+    elif 100 < evaluation <= 200:
         output[8] = 1
-    elif eval > 200 and  eval <= 300:
+    elif 200 < evaluation <= 300:
         output[9] = 1
-    elif eval > 300 and  eval <= 400:
+    elif 300 < evaluation <= 400:
         output[10] = 1
-    elif eval > 400 and eval <= 600:
+    elif 400 < evaluation <= 600:
         output[11] = 1
-    elif eval > 600:
+    elif evaluation > 600:
         output[12] = 1
     # better for black
-    elif eval < -50 and  eval >= -100:
+    elif -50 > evaluation >= -100:
         output[5] = 1
-    elif eval < -100 and eval >= -200:
+    elif -100 > evaluation >= -200:
         output[4] = 1
-    elif eval < -200 and  eval >= -300:
+    elif -200 > evaluation >= -300:
         output[3] = 1
-    elif eval < -300 and  eval >= -400:
+    elif -300 > evaluation >= -400:
         output[2] = 1
-    elif eval < -400 and eval >= -600:
+    elif -400 > evaluation >= -600:
         output[1] = 1
-    elif eval < -600:
+    elif evaluation < -600:
         output[0] = 1
-    
+
     return output
 
-def eval_to_25_class(eval):
+
+def eval_to_25_class(evaluation):
     ## create data for evaluation into 7 groups
     # +- 20     -> group 12 - draw
     # 20 - 40   -> group 11,13
@@ -261,64 +267,64 @@ def eval_to_25_class(eval):
 
     output = np.zeros(25, dtype=float)
     # draw
-    if eval <= 20 and eval >= -20:
+    if 20 >= evaluation >= -20:
         output[12] = 1
-    #better for white
-    elif eval > 20 and eval <= 40:
+    # better for white
+    elif 20 < evaluation <= 40:
         output[13] = 1
-    elif eval > 40 and eval <= 60:
+    elif 40 < evaluation <= 60:
         output[14] = 1
-    elif eval > 60 and eval <= 80:
+    elif 60 < evaluation <= 80:
         output[15] = 1
-    elif eval > 80 and eval <= 100:
+    elif 80 < evaluation <= 100:
         output[16] = 1
-    elif eval > 100 and eval <= 150:
+    elif 100 < evaluation <= 150:
         output[17] = 1
-    elif eval > 150 and eval <= 200:
+    elif 150 < evaluation <= 200:
         output[18] = 1
-    elif eval > 200 and eval <= 250:
+    elif 200 < evaluation <= 250:
         output[19] = 1
-    elif eval > 250 and eval <= 300:
+    elif 250 < evaluation <= 300:
         output[20] = 1
-    elif eval > 300 and eval <= 350:
+    elif 300 < evaluation <= 350:
         output[21] = 1
-    elif eval > 350 and eval <= 400:
+    elif 350 < evaluation <= 400:
         output[22] = 1
-    elif eval > 400 and eval <= 500:
+    elif 400 < evaluation <= 500:
         output[23] = 1
-    elif eval > 500:
+    elif evaluation > 500:
         output[24] = 1
     # better for black
-    elif eval < -20 and eval >= -40:
+    elif -20 > evaluation >= -40:
         output[11] = 1
-    elif eval < -40 and eval >= -60:
+    elif -40 > evaluation >= -60:
         output[10] = 1
-    elif eval < -60 and eval >= -80:
+    elif -60 > evaluation >= -80:
         output[9] = 1
-    elif eval < -80 and eval >= -100:
+    elif -80 > evaluation >= -100:
         output[8] = 1
-    elif eval < -100 and eval >= -150:
+    elif -100 > evaluation >= -150:
         output[7] = 1
-    elif eval < -150 and eval >= -200:
+    elif -150 > evaluation >= -200:
         output[6] = 1
-    elif eval < -200 and eval >= -250:
+    elif -200 > evaluation >= -250:
         output[5] = 1
-    elif eval < -250 and eval >= -300:
+    elif -250 > evaluation >= -300:
         output[4] = 1
-    elif eval < -300 and eval >= -350:
+    elif -300 > evaluation >= -350:
         output[3] = 1
-    elif eval < -350 and eval >= -400:
+    elif -350 > evaluation >= -400:
         output[2] = 1
-    elif eval < -400 and eval >= -500:
+    elif -400 > evaluation >= -500:
         output[1] = 1
-    elif eval < -500:
+    elif evaluation < -500:
         output[0] = 1
-    
     return output
 
+
 def load_data(input_type='colors', output_type='class'):
-    ## input_type = 'colors' or 'pieces'
-    ## output_type = 'class' or 'single'
+    # input_type = 'colors' or 'pieces'
+    # output_type = 'class' or 'single'
 
     # load fen positions
     start = time.time()
@@ -327,7 +333,7 @@ def load_data(input_type='colors', output_type='class'):
     positions = open('C:/Users/maelic/Documents/VUT/DP/nn_backend/games7.txt', "r")
     fens = positions.read().split('\n')
     positions.close()
-    print('Positions loaded in', int(time.time()-start),'seconds\n')
+    print('Positions loaded in', int(time.time() - start), 'seconds\n')
 
     # load evaluations
     start = time.time()
@@ -336,273 +342,283 @@ def load_data(input_type='colors', output_type='class'):
     evals = open('C:/Users/maelic/Documents/VUT/DP//nn_backend/games7_eval.txt', "r")
     evaluations = evals.read().split('\n')
     evals.close()
-    print('Evaluations loaded in', int(time.time()-start),'seconds\n')
+    print('Evaluations loaded in', int(time.time() - start), 'seconds\n')
 
     # prepare input data
     start = time.time()
     print('Preparing input')
     x = []
     if input_type == 'colors':
-        for i in range(0,len(fens)):
+        for i in range(0, len(fens)):
             x.append(fen_to_colors_input(fens[i]))
     elif input_type == 'pieces':
-        for i in range(0,len(fens)):
+        for i in range(0, len(fens)):
             x.append(fen_to_pieces_input(fens[i]))
     x = np.array(x)
-    print('Input prepared in', int(time.time()-start),'seconds\n')
+    print('Input prepared in', int(time.time() - start), 'seconds\n')
 
     # prepare output data
     start = time.time()
     print('Preparing output')
     y = []
     if output_type == 'single':
-        for i in range(0,len(evaluations)):
+        for i in range(0, len(evaluations)):
             try:
-                y.append(float(evaluations[i])/600)
+                y.append(float(evaluations[i]) / 600)
             except:
                 break
     elif output_type == 'class':
-        for i in range(0,len(evaluations)):
+        for i in range(0, len(evaluations)):
             try:
                 y.append(eval_to_sparse_7_class(float(evaluations[i])))
             except:
                 break
     y = np.array(y)
-    print('Output prepared in', int(time.time()-start),'seconds\n')
+    print('Output prepared in', int(time.time() - start), 'seconds\n')
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)    
-    return x_train, x_test, y_train, y_test
+    x_train_data, x_test_data, y_train_data, y_test_data = train_test_split(
+        x, y, test_size=0.2, random_state=42)
+    return x_train_data, x_test_data, y_train_data, y_test_data
 
-def model_1(x_train, y_train, x_test, y_test):
-    ## MODEL 1, regression
-    model = Sequential()
 
-    model.add(Dense(448, input_shape=x_train[0].shape))
-    model.add(Flatten())
+def model_1(x_train_data, y_train_data, x_test_data, y_test_data):
+    # MODEL 1, regression
+    regression_model = Sequential()
 
-    model.add(Dense(256))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(Dropout(0.2))
+    regression_model.add(Dense(448, input_shape=x_train_data[0].shape))
+    regression_model.add(Flatten())
 
-    model.add(Dense(64))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(Dropout(0.2))
+    regression_model.add(Dense(256))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
+    regression_model.add(Dropout(0.2))
 
-    model.add(Dense(16))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(Dropout(0.2))
+    regression_model.add(Dense(64))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
+    regression_model.add(Dropout(0.2))
 
-    model.add(Dense(1))
-    
+    regression_model.add(Dense(16))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
+    regression_model.add(Dropout(0.2))
+
+    regression_model.add(Dense(1))
+
     adam = Adam(lr=0.00001)
-    model.compile(
+    regression_model.compile(
         loss='mean_squared_error',
         optimizer=adam,
         metrics=['acc']
     )
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=16)
 
-    history = model.fit(
-        x_train,
-        y_train,
+    model_history = regression_model.fit(
+        x_train_data,
+        y_train_data,
         batch_size=128,
         epochs=256,
-        validation_data=(x_test, y_test),
+        validation_data=(x_test_data, y_test_data),
         callbacks=[es]
     )
 
-    return model, history
+    return regression_model, model_history
 
-def model_2(x_train, y_train, x_test, y_test):
-    ## MODEL 2 - classification
-    model = Sequential()
-    model.add(Conv2D(512, kernel_size=5, input_shape=x_train[0].shape))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
 
-    model.add(Conv2D(1024, kernel_size=3))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
+def model_2(x_train_data, y_train_data, x_test_data, y_test_data):
+    # MODEL 2 - classification
+    classification_model = Sequential()
+    classification_model.add(Conv2D(512, kernel_size=5, input_shape=x_train_data[0].shape))
+    classification_model.add(BatchNormalization())
+    classification_model.add(Activation('relu'))
 
-    model.add(Flatten())
+    classification_model.add(Conv2D(1024, kernel_size=3))
+    classification_model.add(BatchNormalization())
+    classification_model.add(Activation('relu'))
 
-    model.add(Dense(1024))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
+    classification_model.add(Flatten())
 
-    model.add(Dense(256))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
-    
-    model.add(Dense(64))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
+    classification_model.add(Dense(1024))
+    classification_model.add(Activation('relu'))
+    classification_model.add(Dropout(0.5))
 
-    model.add(Dense(13))
-    model.add(Activation('softmax'))
+    classification_model.add(Dense(256))
+    classification_model.add(Activation('relu'))
+    classification_model.add(Dropout(0.5))
 
-    model.compile(
+    classification_model.add(Dense(64))
+    classification_model.add(Activation('relu'))
+    classification_model.add(Dropout(0.5))
+
+    classification_model.add(Dense(13))
+    classification_model.add(Activation('softmax'))
+
+    classification_model.compile(
         loss='sparse_categorical_crossentropy',
         optimizer="sgd",
         metrics=['sparse_categorical_accuracy']
     )
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=16)
 
-    history = model.fit(
-        x_train,
-        y_train,
+    model_history = classification_model.fit(
+        x_train_data,
+        y_train_data,
         batch_size=32,
         epochs=128,
-        validation_data=(x_test, y_test),
+        validation_data=(x_test_data, y_test_data),
         callbacks=[es]
     )
 
-    return model, history
+    return classification_model, model_history
 
-def model_3(x_train, y_train, x_test, y_test):
-    ## MODEL 3 - classification
-    model = Sequential()
-    model.add(Conv2D(256, kernel_size=3, input_shape=x_train[0].shape))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
 
-    model.add(Conv2D(512, kernel_size=3))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
+def model_3(x_train_data, y_train_data, x_test_data, y_test_data):
+    # MODEL 3 - classification
+    classification_model = Sequential()
+    classification_model.add(Conv2D(256, kernel_size=3, input_shape=x_train_data[0].shape))
+    classification_model.add(BatchNormalization())
+    classification_model.add(Activation('relu'))
 
-    model.add(Flatten())
-    
-    model.add(Dense(512))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.3))
+    classification_model.add(Conv2D(512, kernel_size=3))
+    classification_model.add(BatchNormalization())
+    classification_model.add(Activation('relu'))
 
-    model.add(Dense(7))
-    model.add(Activation('softmax'))
+    classification_model.add(Flatten())
+
+    classification_model.add(Dense(512))
+    classification_model.add(Activation('relu'))
+    classification_model.add(Dropout(0.3))
+
+    classification_model.add(Dense(7))
+    classification_model.add(Activation('softmax'))
 
     adam = Adam(lr=0.00001)
-    model.compile(
+    classification_model.compile(
         loss='sparse_categorical_crossentropy',
         optimizer=adam,
         metrics=['sparse_categorical_accuracy']
     )
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=8)
 
-    history = model.fit(
-        x_train,
-        y_train,
+    model_history = classification_model.fit(
+        x_train_data,
+        y_train_data,
         batch_size=256,
         epochs=128,
-        validation_data=(x_test, y_test),
+        validation_data=(x_test_data, y_test_data),
         callbacks=[es]
     )
 
-    return model, history
+    return classification_model, model_history
 
-def model_4(x_train, y_train, x_test, y_test):
-    ## MODEL 4 - regression
-    model = Sequential()
-    model.add(Conv2D(128, kernel_size=3, input_shape=x_train[0].shape))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
 
-    model.add(Conv2D(256, kernel_size=3))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
+def model_4(x_train_data, y_train_data, x_test_data, y_test_data):
+    # MODEL 4 - regression
+    regression_model = Sequential()
+    regression_model.add(Conv2D(128, kernel_size=3, input_shape=x_train_data[0].shape))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
 
-    model.add(Flatten())
-    
-    model.add(Dense(256))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
+    regression_model.add(Conv2D(256, kernel_size=3))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
 
-    model.add(Dense(1))
+    regression_model.add(Flatten())
+
+    regression_model.add(Dense(256))
+    regression_model.add(Activation('relu'))
+    regression_model.add(Dropout(0.5))
+
+    regression_model.add(Dense(1))
 
     adam = Adam(lr=0.0001)
-    model.compile(
+    regression_model.compile(
         loss='mse',
         optimizer=adam,
-        metrics=['acc']#, 'mae', 'mape', 'cosine']
+        metrics=['acc']  # , 'mae', 'mape', 'cosine']
     )
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=8)
 
-    history = model.fit(
-        x_train,
-        y_train,
+    model_history = regression_model.fit(
+        x_train_data,
+        y_train_data,
         batch_size=256,
         epochs=128,
-        validation_data=(x_test, y_test),
+        validation_data=(x_test_data, y_test_data),
         callbacks=[es]
     )
 
-    return model, history
+    return regression_model, model_history
 
-def model_5(x_train, y_train, x_test, y_test):
-    ## MODEL 5 - regression
-    model = Sequential()
-    model.add(Dense(256, input_shape=x_train[0].shape))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(Dropout(0.3))
-    model.add(Flatten())
-    
-    model.add(Dense(128))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(Dropout(0.3))
 
-    model.add(Dense(32))
-    model.add(BatchNormalization())
-    model.add(Activation('relu'))
-    model.add(Dropout(0.3))
+def model_5(x_train_data, y_train_data, x_test_data, y_test_data):
+    # MODEL 5 - regression
+    regression_model = Sequential()
+    regression_model.add(Dense(256, input_shape=x_train_data[0].shape))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
+    regression_model.add(Dropout(0.3))
+    regression_model.add(Flatten())
 
-    model.add(Dense(1))
+    regression_model.add(Dense(128))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
+    regression_model.add(Dropout(0.3))
+
+    regression_model.add(Dense(32))
+    regression_model.add(BatchNormalization())
+    regression_model.add(Activation('relu'))
+    regression_model.add(Dropout(0.3))
+
+    regression_model.add(Dense(1))
 
     adam = Adam(lr=0.0001)
-    model.compile(
+    regression_model.compile(
         loss='mse',
         optimizer=adam,
         metrics=['acc']
     )
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=16)
 
-    history = model.fit(
-        x_train,
-        y_train,
+    model_history = regression_model.fit(
+        x_train_data,
+        y_train_data,
         batch_size=256,
         epochs=128,
-        validation_data=(x_test, y_test),
+        validation_data=(x_test_data, y_test_data),
         callbacks=[es]
     )
 
-    return model, history
+    return regression_model, model_history
 
-def eval_model(model, x_test, y_test, save):
+
+def eval_model(nn_model, x_test_data, y_test_data, save_params):
     # Test model and print score
-    if save[0]:
-        model.save(save[1])
-    score, acc = model.evaluate(x_test, y_test, batch_size=128)
+    if save_params[0]:
+        nn_model.save(save_params[1])
+    score, acc = nn_model.evaluate(x_test_data, y_test_data, batch_size=128)
     print('\nTest score:', score)
-    print('Test accuracy:', acc)    
+    print('Test accuracy:', acc)
 
-def load_npy_data(type, depth):
+
+def load_npy_data(output_data_type, depth):
     # type -> single/class, depth -> 5/10
     x = np.load('C:/Users/maelic/Documents/VUT/DP/nn_backend/npy_data_50k/input.npy')
-    if type == 'single' and depth == 5:        
+    y = None
+    if output_data_type == 'single' and depth == 5:
         y = np.load('C:/Users/maelic/Documents/VUT/DP/nn_backend/npy_data_50k/single_output_d5.npy')
-    elif type == 'single' and depth == 10:
-        y = np.load('C:/Users/maelic/Documents/VUT/DP/nn_backend/npy_data_50k/single_output_d10.npy')
-    elif type == 'class' and depth == 5:
+    elif output_data_type == 'single' and depth == 10:
+        y = np.load(
+            'C:/Users/maelic/Documents/VUT/DP/nn_backend/npy_data_50k/single_output_d10.npy')
+    elif output_data_type == 'class' and depth == 5:
         y = np.load('C:/Users/maelic/Documents/VUT/DP/nn_backend/npy_data_50k/class_output_d5.npy')
-    elif type == 'class' and depth == 10:
+    elif output_data_type == 'class' and depth == 10:
         y = np.load('C:/Users/maelic/Documents/VUT/DP/nn_backend/npy_data_50k/class_output_d10.npy')
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
-    return x_train, x_test, y_train, y_test
+    return train_test_split(x, y, test_size=0.2, random_state=42)
 
-## MAIN
+
+# MAIN
 if __name__ == '__main__':
     # load data
     print('Loading data..')
