@@ -7,3 +7,4 @@ pylint
 python-chess
 sklearn
 tensorflow
+tqdm
