@@ -12,8 +12,7 @@ def parse_pgn(number):
     evaluations2 = []
     inp = []
     start_time = time.time()
-    engine = chess.engine.SimpleEngine.popen_uci(
-        "C:/Users/maelic/Documents/Chessbase/Engines/stockfish_x64_bmi2.exe")
+    engine = chess.engine.SimpleEngine.popen_uci("D:/Chess/Engines/stockfish.exe")
 
     i = 0
     while True:
