@@ -1,9 +1,7 @@
-flake8
 chess
 matplotlib
 numpy
 pyinstaller
-pylint
 python-chess
 sklearn
 tensorflow
