@@ -1,7 +1,4 @@
-chess
-matplotlib
 numpy
-pyinstaller
 python-chess
 sklearn
 tensorflow
