@@ -20,6 +20,8 @@ Install python virtual environment via **venv.cmd** file.
 ## EXE
 You can compile yourself from https://github.com/maelic13/beast_exe
 
+Tested and working for Hiarcs Chess Explorer and Arena. Currently not working with Chessbase and Fritz! For other GUIs, you have to test for yourself.
+
 The exe must be placed in beast repo, expecting following relative paths to exist
 - ./venv/scripts/python.exe
 - ./src/beast.py
