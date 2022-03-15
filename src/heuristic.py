@@ -8,6 +8,7 @@ import chess
 import chess.syzygy
 from random import uniform, randrange
 
+
 # VARIABLES
 # Piece values
 pawn = 100
@@ -440,10 +441,3 @@ def nn_heuristic(fen, options, model):
 
 def random_heuristic():
     return int(uniform(0, 2000))
-
-
-if __name__ == '__main__':
-    from main import options
-    opt = options()
-    h = heuristic('6q1/K5k1/8/8/8/8/8/8 w - - 99 177', opt)
-    print(h)
