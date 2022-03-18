@@ -1,7 +1,11 @@
-
+# folders
 .idea/
-venv/
 build/
-*.pyc
+venv/
+
+# files
+*.exe
+*.h5
 *.pgn
+*.pyc
 *.txt
