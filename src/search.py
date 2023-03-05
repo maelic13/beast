@@ -48,6 +48,8 @@ def main(goParams, options):
             options.model = load_model('classification.h5')
         else:
             options.model = load_model(options.modelFile)
+    elif options.heuristic == "Random":
+        goParams.depth = 1
 
     # main loop of iterative expansion
     while conditionsMet(depth, goParams, options.flag):
