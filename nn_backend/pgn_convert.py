@@ -173,7 +173,7 @@ if __name__ == "__main__":
           f"{int((time() - start) % 60)} seconds.\n")
 
     start = time()
-    evaluated_positions = DataHelper.evaluate2(extracted_positions, num_processes=32)
+    evaluated_positions = DataHelper.evaluate2(extracted_positions)
     print(f"Evaluation took {int((time() - start) / 60)} minutes "
           f"{int((time() - start) % 60)} seconds.")
 
