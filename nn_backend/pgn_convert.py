@@ -1,6 +1,5 @@
 from multiprocessing import current_process, cpu_count, Pool
 from time import time
-from tqdm import tqdm
 from typing import List, Optional, Tuple
 
 from chess import Board
@@ -65,16 +64,8 @@ class DataHelper:
         return positions
 
     @classmethod
-    def evaluate(cls, positions: List[str]) -> List[Tuple[str, float]]:
-        results = []
-        for result in tqdm(Pool(processes=8).imap_unordered(cls._evaluate_position, positions),
-                           total=len(positions)):
-            results.append(result)
-        return results
-
-    @classmethod
-    def evaluate2(cls, positions: List[str], num_processes: Optional[int] = None
-                  ) -> List[Tuple[str, float]]:
+    def evaluate(cls, positions: List[str], num_processes: Optional[int] = None
+                 ) -> List[Tuple[str, float]]:
         num_processes = num_processes or cpu_count()
         eval_positions: List[Tuple[str, float]] = []
         positions = cls._parse_data(positions, num_processes)
@@ -102,13 +93,6 @@ class DataHelper:
                 local_start_time = time()
         stockfish.close()
         return analysed_positions
-
-    @classmethod
-    def _evaluate_position(cls, position: str) -> Tuple[str, float]:
-        stockfish = SimpleEngine.popen_uci(cls._stockfish_path)
-        score = stockfish.analyse(Board(fen=position), Limit(depth=10))["score"]
-        stockfish.close()
-        return position, score.relative.wdl().expectation()
 
     @classmethod
     def _log_evaluating_progress(cls, process_name: str, start_time: float, local_start_time: float,
@@ -167,13 +151,13 @@ if __name__ == "__main__":
           f"{int((time() - start) % 60)} seconds.")
     print(f"Extracted positions after doubles elimination: {len(extracted_positions)}.\n")
 
-    start = time()
-    DataHelper.save_positions_to_file(extracted_positions, "extracted_positions.txt")
-    print(f"Saving took {int((time() - start) / 60)} minutes "
-          f"{int((time() - start) % 60)} seconds.\n")
+    # start = time()
+    # DataHelper.save_positions_to_file(extracted_positions, "positions.txt")
+    # print(f"Saving took {int((time() - start) / 60)} minutes "
+    #       f"{int((time() - start) % 60)} seconds.\n")
 
     start = time()
-    evaluated_positions = DataHelper.evaluate2(extracted_positions)
+    evaluated_positions = DataHelper.evaluate(extracted_positions)
     print(f"Evaluation took {int((time() - start) / 60)} minutes "
           f"{int((time() - start) % 60)} seconds.")
 
