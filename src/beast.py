@@ -122,8 +122,6 @@ class Options:
 
 
 class UciLoop(Cmd):
-    prompt = ""
-
     def do_uci(self, arg):
         if opt.debug:
             f = open("log.txt", "a")
