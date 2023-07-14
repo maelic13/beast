@@ -1,291 +1,346 @@
-# needed to suppress unwanted messages in console
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-
 import numpy as np
-
-import chess
-import chess.syzygy
 from random import uniform, randrange
 
+from chess import BISHOP, Board, BLACK, KNIGHT, QUEEN, PAWN, ROOK, SquareSet, WHITE
+from chess.syzygy import open_tablebase
 
-# VARIABLES
+from options import Options
+
+
 # Piece values
-pawn = 100
-knight = 350
-bishop = 350
-rook = 525
-queen = 1000
+PAWN_VALUE = 100
+KNIGHT_VALUE = 350
+BISHOP_VALUE = 350
+ROOK_VALUE = 525
+QUEEN_VALUE = 1000
 
 # Parameter weights for bonus eval
-pawnRankW = 7
-pawnFileW = 5
-pawnCenterW = 5
-pawnDistanceW = 5
+PAWN_RANK_WEIGHT = 7
+PAWN_FILE_WEIGHT = 5
+PAWN_CENTER_WEIGHT = 5
+PAWN_DISTANCE_WEIGHT = 5
 
-knightCenterW = 7
-knightDistanceW = 8
+KNIGHT_CENTER_WEIGHT = 7
+KNIGHT_DISTANCE_WEIGHT = 8
 
-bishopCenterW = 5
-bishopDistanceW = 8
+BISHOP_CENTER_WEIGHT = 5
+BISHOP_DISTANCE_WEIGHT = 8
 
-rookCenterW = 8
-rookDistanceW = 5
+ROOK_CENTER_WEIGHT = 8
+ROOK_DISTANCE_WEIGHT = 5
 
-queenCenterW = 2
-queenDistanceW = 8
+QUEEN_CENTER_WEIGHT = 2
+QUEEN_DISTANCE_WEIGHT = 8
 
-kingCenterWvalue = 8
-kingDistanceW = 5
+KING_CENTER_WEIGHT = 8
+KING_DISTANCE_WEIGHT = 5
 
 
-# FUNCTIONS
-def heuristic(fen, options):
-    board = chess.Board(fen)
+def heuristic(fen: str, options: Options) -> int:
+    """
+    Heuristic for chess engine, returns evaluation based on chosen heuristic stype in options.
+    :param fen: board representation in fen format
+    :param options: search options
+    :return: evaluation
+    """
+    if options.heuristic == "random":
+        return random_evaluation()
 
-    # special eval conditions
+    board = Board(fen)
     if board.is_game_over():
         if board.is_checkmate():
             return -25500
+        return 0
+
+    if options.fifty_move_rule and int(fen.split(' ')[4]) >= 100:
+        return 0
+
+    # tablebase probing
+    evaluation = 0
+    if len(board.piece_map()) <= options.syzygy_probe_limit and options.syzygy_path != '<empty>':
+        with open_tablebase(options.syzygy_path) as tablebase:
+            wdl = tablebase.get_wdl(board)
+
+        if options.fifty_move_rule and wdl == 2:
+            evaluation = 12800
+        elif options.fifty_move_rule and wdl == -2:
+            evaluation = -12800
+        elif not options.fifty_move_rule and wdl == 1:
+            evaluation = 12800
+        elif not options.fifty_move_rule and wdl == -1:
+            evaluation = -12800
         else:
             return 0
 
-    if options.fiftyMoveRule and int(fen.split(' ')[4]) >= 100:
-        return 0
-
-    # normal eval conditions
+    if options.heuristic == "neuralnetwork":
+        evaluation += nn_evaluation(board, options)
     else:
-        eval = 0
-        map = board.piece_map()
+        evaluation += classical_evaluation(board)
+    return evaluation
 
-        # tablebase probing
-        if len(map) <= options.syzygyProbeLimit and options.syzygyPath != '<empty>':
-            with chess.syzygy.open_tablebase(
-                    options.syzygyPath, load_wdl=True, max_fds=128) as tablebase:
-                wdl = tablebase.get_wdl(board)
-                if wdl is not None:
-                    if options.fiftyMoveRule and wdl == -2:
-                        eval = -12800
-                    elif options.fiftyMoveRule and wdl == 2:
-                        eval = 12800
-                    elif not options.fiftyMoveRule and wdl == 1:
-                        eval = 12800
-                    elif not options.fiftyMoveRule and wdl == -1:
-                        eval = -12800
-                    else:
-                        return 0
-            tablebase.close()
 
-        # structures for piece placement
-        wPawns = []
-        bPawns = []
-        wKnights = []
-        bKnights = []
-        wBishops = []
-        bBishops = []
-        wRooks = []
-        bRooks = []
-        wQueens = []
-        bQueens = []
-        wKing = []
-        bKing = []
+def classical_evaluation(board: Board) -> int:
+    """
+    Classical style heuristic function based on piece values and derived from human knowledge.
+    :param board: board representation
+    :return: position evaluation
+    """
+    # pieces
+    w_pawns = board.pieces(PAWN, WHITE)
+    b_pawns = board.pieces(PAWN, BLACK)
+    w_knights = board.pieces(KNIGHT, WHITE)
+    b_knights = board.pieces(KNIGHT, BLACK)
+    w_bishops = board.pieces(BISHOP, WHITE)
+    b_bishops = board.pieces(BISHOP, BLACK)
+    w_rooks = board.pieces(ROOK, WHITE)
+    b_rooks = board.pieces(ROOK, BLACK)
+    w_queens = board.pieces(QUEEN, WHITE)
+    b_queens = board.pieces(QUEEN, BLACK)
+    w_king = board.king(WHITE)
+    b_king = board.king(BLACK)
 
-        # fill structures
-        for each in map:
-            if board.piece_at(each) == chess.Piece(chess.PAWN, chess.WHITE):
-                wPawns.append(each)
-            if board.piece_at(each) == chess.Piece(chess.PAWN, chess.BLACK):
-                bPawns.append(each)
-            if board.piece_at(each) == chess.Piece(chess.KNIGHT, chess.WHITE):
-                wKnights.append(each)
-            if board.piece_at(each) == chess.Piece(chess.KNIGHT, chess.BLACK):
-                bKnights.append(each)
-            if board.piece_at(each) == chess.Piece(chess.BISHOP, chess.WHITE):
-                wBishops.append(each)
-            if board.piece_at(each) == chess.Piece(chess.BISHOP, chess.BLACK):
-                bBishops.append(each)
-            if board.piece_at(each) == chess.Piece(chess.ROOK, chess.WHITE):
-                wRooks.append(each)
-            if board.piece_at(each) == chess.Piece(chess.ROOK, chess.BLACK):
-                bRooks.append(each)
-            if board.piece_at(each) == chess.Piece(chess.QUEEN, chess.WHITE):
-                wQueens.append(each)
-            if board.piece_at(each) == chess.Piece(chess.QUEEN, chess.BLACK):
-                bQueens.append(each)
-            if board.piece_at(each) == chess.Piece(chess.KING, chess.WHITE):
-                wKing.append(each)
-            if board.piece_at(each) == chess.Piece(chess.KING, chess.BLACK):
-                bKing.append(each)
+    # Initial eval - adding value of pieces on board
+    evaluation = (len(w_pawns) * PAWN_VALUE - len(b_pawns) * PAWN_VALUE
+                  + len(w_knights) * KNIGHT_VALUE - len(b_knights) * KNIGHT_VALUE
+                  + len(w_bishops) * BISHOP_VALUE - len(b_bishops) * BISHOP_VALUE
+                  + len(w_rooks) * ROOK_VALUE - len(b_rooks) * ROOK_VALUE
+                  + len(w_queens) * QUEEN_VALUE - len(b_queens) * QUEEN_VALUE)
 
-        # Initial eval - adding value of pieces on board
-        tab_eval = eval
-        eval = (len(wPawns) * pawn - len(bPawns) * pawn
-                + len(wKnights) * knight - len(bKnights) * knight
-                + len(wBishops) * bishop - len(bBishops) * bishop
-                + len(wRooks) * rook - len(bRooks) * rook
-                + len(wQueens) * queen - len(bQueens) * queen)
+    # Pawns
+    wp_bonus = pawn_bonus(w_pawns, b_king, True)
+    bp_bonus = pawn_bonus(b_pawns, w_king, False)
 
-        # BUNUSES
-        # Pawns
-        wpBonus = pawnBonus(wPawns, bKing, True)
-        bpBonus = pawnBonus(bPawns, wKing, False)
+    # Knights
+    wk_bonus = knight_bonus(w_knights, b_king)
+    bk_bonus = knight_bonus(b_knights, w_king)
 
-        # Knights
-        wkBonus = knightBonus(wKnights, bKing, True)
-        bkBonus = knightBonus(bKnights, wKing, False)
+    # Bishops
+    wb_bonus = bishop_bonus(w_bishops, b_king)
+    bb_bonus = bishop_bonus(b_bishops, w_king)
 
-        # Bishops
-        wbBonus = bishopBonus(wBishops, bKing, True)
-        bbBonus = bishopBonus(bBishops, wKing, False)
+    # Rooks
+    wr_bonus = rook_bonus(w_rooks, b_king)
+    br_bonus = rook_bonus(b_rooks, w_king)
 
-        # Rooks
-        wrBonus = rookBonus(wRooks, bKing, True)
-        brBonus = rookBonus(bRooks, wKing, False)
+    # Queens
+    wq_bonus = queen_bonus(w_queens, b_king)
+    bq_bonus = queen_bonus(b_queens, w_king)
 
-        # Queens
-        wqBonus = queenBonus(wQueens, bKing, True)
-        bqBonus = queenBonus(bQueens, wKing, False)
+    # Kings
+    wki_bonus = king_bonus(w_king, b_king, bool(b_queens))
+    bki_bonus = king_bonus(b_king, w_king, bool(w_queens))
 
-        # Kings
-        wkingBonus = kingBonus(wKing, bKing, bQueens == [])
-        bkingBonus = kingBonus(bKing, wKing, wQueens == [])
+    # Add bonuses to eval
+    evaluation += (wp_bonus - bp_bonus + wk_bonus - bk_bonus + wb_bonus - bb_bonus
+                   + wr_bonus - br_bonus + wq_bonus - bq_bonus + wki_bonus - bki_bonus)
 
-        # Add bonuses to eval
-        eval += (wpBonus - bpBonus
-                 + wkBonus - bkBonus
-                 + wbBonus - bbBonus
-                 + wrBonus - brBonus
-                 + wqBonus - bqBonus
-                 + wkingBonus - bkingBonus)
-        # Assign eval to node
+    # Assign eval to node
+    if not board.turn:
+        return -int(evaluation)
+    return int(evaluation)
+
+
+def nn_evaluation(board: Board, options: Options) -> int:
+    """
+    Position evaluation by neural network.
+    :param board: board representation
+    :param options: search options
+    :return: evaluation
+    """
+    if '3-100k' in options.model_file:
+        data = np.array([fen_to_input(board.fen())])
+        evaluation = (options.model.predict_classes(data)[0] - 3) * 100 + randrange(-50, 51, 1)
+        return int(evaluation)
+    elif options.network == "Classification":
+        data = np.array([fen_to_input(board.fen())])
+        evaluation = (options.model.predict_classes(data)[0] - 3) * 100 + randrange(-50, 51, 1)
         if board.turn:
-            return int(eval) + tab_eval
+            return int(evaluation)
         else:
-            return -int(eval) + tab_eval
+            return -int(evaluation)
+    elif '100k' in options.model_file:
+        data = np.array([fen_to_input(board.fen())])
+        evaluation = options.model.predict(data, verbose=0)
+        return int(round(evaluation[0][0] * 2000))
+
+    data = np.array([fen_to_input(board.fen())])
+    evaluation = options.model.predict(data, verbose=0)
+    if board.turn:
+        return int(round(evaluation[0][0] * 2000))
+    return -int(round(evaluation[0][0] * 2000))
 
 
-def pawnBonus(pawns, king, color):
-    pBonus = 0
-    for each in pawns:
-        # rank bonus -> the further the pawn, the more of a bonus
+def random_evaluation():
+    """
+    Give random evaluation to the position.
+    :return: random integer
+    """
+    return int(uniform(0, 2000))
+
+
+def occupying_center_bonus(piece_position: int, bonus: int) -> int:
+    """
+    Bonus for occupying squares close to center.
+    :param piece_position: position of piece to evaluate
+    :param bonus: bonus value for piece type
+    :return: evaluation bonus
+    """
+    if (int(piece_position / 8) in range(3, 5) and piece_position % 8 in range(3, 5)
+            or int(piece_position / 8) in range(2, 6) and piece_position % 8 in range(2, 6)
+            or int(piece_position / 8) in range(1, 7) and piece_position % 8 in range(1, 7)):
+        return bonus
+    return 0
+
+
+def distance_from_king_bonus(piece_position: int, king_position: int, bonus: int) -> int:
+    """
+    Bonus for distance from opponent's king.
+    :param piece_position: position of piece to evaluate
+    :param king_position: opponent king's position
+    :param bonus: bonus value for piece type
+    :return: evaluation bonus
+    """
+    distance = (abs(int(piece_position / 8) - int(king_position / 8))
+                + abs(piece_position % 8 - king_position % 8))
+    return int(14 / distance * bonus - bonus)
+
+
+def pawn_bonus(pawns: SquareSet, king_position: int, color: bool) -> int:
+    """
+    Evaluation bonus for positions of pawns on board.
+    :param pawns: set of squares containing pawns
+    :param king_position: opponent king's position on board
+    :param color: player to move, white True, black False
+    :return: evaluation bonus
+    """
+    p_bonus = 0
+    for pawn_position in pawns:
+        # rank bonus -> the further forward the pawn, the more of a bonus
         if color:
-            pBonus += (int(each / 8) - 1) * pawnRankW
+            p_bonus += (int(pawn_position / 8) - 1) * PAWN_RANK_WEIGHT
         else:
-            pBonus += (6 - int(each / 8)) * pawnRankW
-        # file decrement -> central files take nothing, the closer to rim, the less pawn's value
-        if each % 8 < 3:
-            pBonus -= (3 - each % 8) * pawnFileW
-        elif each % 8 > 4:
-            pBonus -= (each % 8 - 4) * pawnFileW
-        else:
-            pass
+            p_bonus += (6 - int(pawn_position / 8)) * PAWN_RANK_WEIGHT
+
+        # file penalty -> central files take none, the closer to rim the less pawn's value
+        if pawn_position % 8 < 3:
+            p_bonus -= (3 - pawn_position % 8) * PAWN_FILE_WEIGHT
+        elif pawn_position % 8 > 4:
+            p_bonus -= (pawn_position % 8 - 4) * PAWN_FILE_WEIGHT
 
         # occupying center bonus
-        if int(each / 8) in range(3, 5) and each % 8 in range(3, 5):
-            pBonus += pawnCenterW
-        if int(each / 8) in range(2, 6) and each % 8 in range(2, 6):
-            pBonus += pawnCenterW
-        if int(each / 8) in range(1, 7) and each % 8 in range(1, 7):
-            pBonus += pawnCenterW
-
+        p_bonus += occupying_center_bonus(pawn_position, PAWN_CENTER_WEIGHT)
         # distance from king bonus
-        distance = abs(int(each / 8) - int(king[0] / 8)) + abs(each % 8 - king[0] % 8)
-        pBonus += 14 / distance * pawnDistanceW - pawnDistanceW
+        p_bonus += distance_from_king_bonus(pawn_position, king_position, PAWN_DISTANCE_WEIGHT)
 
-    return pBonus
+    return p_bonus
 
 
-def knightBonus(knights, king, _color):
-    kBonus = 0
-    for each in knights:
+def knight_bonus(knights: SquareSet, king_position: int) -> int:
+    """
+    Evaluation bonus for positions knights on board.
+    :param knights: set of squares containing knights
+    :param king_position: opponent king's position on board
+    :return: evaluation bonus
+    """
+    k_bonus = 0
+    for knight_position in knights:
         # occupying center bonus
-        if int(each / 8) in range(3, 5) and each % 8 in range(3, 5):
-            kBonus += knightCenterW
-        if int(each / 8) in range(2, 6) and each % 8 in range(2, 6):
-            kBonus += knightCenterW
-        if int(each / 8) in range(1, 7) and each % 8 in range(1, 7):
-            kBonus += knightCenterW
+        k_bonus += occupying_center_bonus(knight_position, KNIGHT_CENTER_WEIGHT)
 
         # distance from king bonus
-        distance = abs(int(each / 8) - int(king[0] / 8)) + abs(each % 8 - king[0] % 8)
-        kBonus += 14 / distance * knightDistanceW - knightDistanceW
-    return kBonus
+        k_bonus += distance_from_king_bonus(knight_position, king_position, KNIGHT_DISTANCE_WEIGHT)
+
+    return k_bonus
 
 
-def bishopBonus(bishops, king, _color):
-    bBonus = 0
-    for each in bishops:
+def bishop_bonus(bishops: SquareSet, king_position: int) -> int:
+    """
+    Evaluation bonus for positions of bishops on board.
+    :param bishops: set of squares containing bishops
+    :param king_position: opponent king's position on board
+    :return: evaluation bonus
+    """
+    b_bonus = 0
+    for bishop_position in bishops:
         # occupying center bonus
-        if int(each / 8) in range(3, 5) and each % 8 in range(3, 5):
-            bBonus += bishopCenterW
-        if int(each / 8) in range(2, 6) and each % 8 in range(2, 6):
-            bBonus += bishopCenterW
-        if int(each / 8) in range(1, 7) and each % 8 in range(1, 7):
-            bBonus += bishopCenterW
+        b_bonus += occupying_center_bonus(bishop_position, BISHOP_CENTER_WEIGHT)
 
         # distance from king bonus
-        distance = abs(int(each / 8) - int(king[0] / 8)) + abs(each % 8 - king[0] % 8)
-        bBonus += 14 / distance * bishopDistanceW - bishopDistanceW
-    return bBonus
+        b_bonus += distance_from_king_bonus(bishop_position, king_position, KNIGHT_DISTANCE_WEIGHT)
+
+    return b_bonus
 
 
-def rookBonus(rooks, king, _color):
-    rBonus = 0
-    for each in rooks:
+def rook_bonus(rooks: SquareSet, king_position: int) -> int:
+    """
+    Evaluation bonus for positions of rooks on board.
+    :param rooks: set of squares containing rooks
+    :param king_position: opponent king's position on board
+    :return: evaluation bonus
+    """
+    r_bonus = 0
+    for rook_position in rooks:
         # occupying center files bonus
-        if each % 8 in range(3, 5):
-            rBonus += rookCenterW
-        if each % 8 in range(2, 6):
-            rBonus += rookCenterW
-        if each % 8 in range(1, 7):
-            rBonus += rookCenterW
+        if rook_position % 8 in range(3, 5):
+            r_bonus += ROOK_CENTER_WEIGHT
+        if rook_position % 8 in range(2, 6):
+            r_bonus += ROOK_CENTER_WEIGHT
+        if rook_position % 8 in range(1, 7):
+            r_bonus += ROOK_CENTER_WEIGHT
 
         # distance from king bonus
-        distance = abs(int(each / 8) - int(king[0] / 8)) + abs(each % 8 - king[0] % 8)
-        rBonus += 14 / distance * rookDistanceW - rookDistanceW
-    return rBonus
+        r_bonus += distance_from_king_bonus(rook_position, king_position, ROOK_DISTANCE_WEIGHT)
+
+    return r_bonus
 
 
-def queenBonus(queens, king, _color):
-    qBonus = 0
-    for each in queens:
+def queen_bonus(queens: SquareSet, king_position: int) -> int:
+    """
+    Evaluation bonus for positions of queens on board.
+    :param queens: set of squares containing queens
+    :param king_position: opponent king's position on board
+    :return: evaluation bonus
+    """
+    q_bonus = 0
+    for queen_position in queens:
         # occupying center bonus
-        if int(each / 8) in range(3, 5) and each % 8 in range(3, 5):
-            qBonus += queenCenterW
-        if int(each / 8) in range(2, 6) and each % 8 in range(2, 6):
-            qBonus += queenCenterW
-        if int(each / 8) in range(1, 7) and each % 8 in range(1, 7):
-            qBonus += queenCenterW
+        q_bonus += occupying_center_bonus(queen_position, QUEEN_CENTER_WEIGHT)
 
         # distance from king bonus
-        distance = abs(int(each / 8) - int(king[0] / 8)) + abs(each % 8 - king[0] % 8)
-        qBonus += 14 / distance * queenDistanceW - queenDistanceW
-    return qBonus
+        q_bonus += distance_from_king_bonus(queen_position, king_position, QUEEN_DISTANCE_WEIGHT)
+
+    return q_bonus
 
 
-def kingBonus(king, oponentKing, noQueen):
-    kingBonus = 0
-    if noQueen:
-        kingCenterW = kingCenterWvalue
+def king_bonus(king_position: int, opponents_king: int, no_queen: bool) -> int:
+    """
+    Evaluation bonus for positions of king on board.
+    :param king_position: king's position on board
+    :param opponents_king: opponent king's position on board
+    :param no_queen: information about presence of opponent's queens on board
+    :return: evaluation bonus
+    """
+    k_bonus = 0
+    if no_queen:
+        king_center_weight = KING_CENTER_WEIGHT
     else:
-        kingCenterW = -kingCenterWvalue
+        king_center_weight = -KING_CENTER_WEIGHT
 
-    for each in king:
-        # occupying center bonus
-        if int(each / 8) in range(3, 5) and each % 8 in range(3, 5):
-            kingBonus += kingCenterW
-        if int(each / 8) in range(2, 6) and each % 8 in range(2, 6):
-            kingBonus += kingCenterW
-        if int(each / 8) in range(1, 7) and each % 8 in range(1, 7):
-            kingBonus += kingCenterW
+    # occupying center bonus
+    k_bonus += occupying_center_bonus(king_position, king_center_weight)
 
-        # distance from king bonus
-        distance = abs(int(each / 8) - int(oponentKing[0] / 8)) + abs(each % 8 - oponentKing[0] % 8)
-        kingBonus += 14 / distance * kingDistanceW - kingDistanceW
-    return kingBonus
+    # distance from king bonus
+    k_bonus += distance_from_king_bonus(king_position, opponents_king, KING_DISTANCE_WEIGHT)
+
+    return k_bonus
 
 
-def fen_to_input(fen):
+def fen_to_input(fen: str) -> np.ndarray:
+    """
+    Convert board representation in fen format to input for neural network.
+    :param fen: board representation
+    :return: input for neural network
+    """
     fen = fen.split(' ')
     inp = np.zeros((7, 8, 8), dtype=int)
 
@@ -331,113 +386,3 @@ def fen_to_input(fen):
         row += 1
 
     return inp
-
-
-def fen_to_pieces_input(fen):
-    board = chess.Board(fen)
-    input = np.zeros((8, 8, 7), dtype=int)
-
-    for i in range(0, 64):
-        if board.piece_at(i) == chess.Piece(chess.PAWN, chess.WHITE):
-            input[i // 8, i % 8, 0] = 1
-        elif board.piece_at(i) == chess.Piece(chess.PAWN, chess.BLACK):
-            input[i // 8, i % 8, 0] = -1
-        elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.WHITE):
-            input[i // 8, i % 8, 1] = 1
-        elif board.piece_at(i) == chess.Piece(chess.KNIGHT, chess.BLACK):
-            input[i // 8, i % 8, 1] = -1
-        elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.WHITE):
-            input[i // 8, i % 8, 2] = 1
-        elif board.piece_at(i) == chess.Piece(chess.BISHOP, chess.BLACK):
-            input[i // 8, i % 8, 2] = -1
-        elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.WHITE):
-            input[i // 8, i % 8, 3] = 1
-        elif board.piece_at(i) == chess.Piece(chess.ROOK, chess.BLACK):
-            input[i // 8, i % 8, 3] = -1
-        elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.WHITE):
-            input[i // 8, i % 8, 4] = 1
-        elif board.piece_at(i) == chess.Piece(chess.QUEEN, chess.BLACK):
-            input[i // 8, i % 8, 4] = -1
-        elif board.piece_at(i) == chess.Piece(chess.KING, chess.WHITE):
-            input[i // 8, i % 8, 5] = 1
-        elif board.piece_at(i) == chess.Piece(chess.KING, chess.BLACK):
-            input[i // 8, i % 8, 5] = -1
-        if not board.turn:
-            input[i // 8, i % 8, 6] = -1
-        else:
-            input[i // 8, i % 8, 6] = 1
-
-    return input
-
-
-def nn_heuristic(fen, options, model):
-    board = chess.Board(fen)
-
-    # special eval conditions
-    if board.is_game_over():
-        if board.is_checkmate():
-            return -25500
-        else:
-            return 0
-
-    if options.fiftyMoveRule and int(fen.split(' ')[4]) >= 100:
-        return 0
-
-    # normal eval conditions
-    else:
-        eval = 0
-        map = board.piece_map()
-
-        # tablebase probing
-        if len(map) <= options.syzygyProbeLimit and options.syzygyPath != '<empty>':
-            with chess.syzygy.open_tablebase(
-                    options.syzygyPath, load_wdl=True, max_fds=128) as tablebase:
-                wdl = tablebase.get_wdl(board)
-                if wdl is not None:
-                    if options.fiftyMoveRule and wdl == -2:
-                        eval = -12800
-                    elif options.fiftyMoveRule and wdl == 2:
-                        eval = 12800
-                    elif not options.fiftyMoveRule and wdl == 1:
-                        eval = 12800
-                    elif not options.fiftyMoveRule and wdl == -1:
-                        eval = -12800
-                    else:
-                        return 0
-            tablebase.close()
-
-        tab_eval = eval
-        # create data to pass to net
-        if '3-100k' in options.modelFile:
-            data = np.array([fen_to_input(fen)])
-            eval = (model.predict_classes(data)[0] - 3) * 100 + randrange(-50, 51, 1)
-            return int(eval) + tab_eval
-        elif options.network == "Classification":
-            data = np.array([fen_to_input(fen)])
-            eval = (model.predict_classes(data)[0] - 3) * 100 + randrange(-50, 51, 1)
-            if board.turn:
-                return int(eval) + tab_eval
-            else:
-                return -int(eval) + tab_eval
-        elif 'model4_50k_wrong' in options.modelFile:
-            data = np.array([fen_to_pieces_input(fen)])
-            eval = model.predict(data)
-            if board.turn:
-                return int(round(eval[0][0] * 2000)) + tab_eval
-            else:
-                return -int(round(eval[0][0] * 2000)) + tab_eval
-        elif '100k' in options.modelFile:
-            data = np.array([fen_to_input(fen)])
-            eval = model.predict(data)
-            return int(round(eval[0][0] * 2000)) + tab_eval
-        else:
-            data = np.array([fen_to_input(fen)])
-            eval = model.predict(data)
-            if board.turn:
-                return int(round(eval[0][0] * 2000)) + tab_eval
-            else:
-                return -int(round(eval[0][0] * 2000)) + tab_eval
-
-
-def random_heuristic():
-    return int(uniform(0, 2000))
