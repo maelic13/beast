@@ -16,6 +16,9 @@ author = "Miloslav Macurek"
 
 
 class UciLoop(Cmd):
+    # set prompt message, shows before every command
+    prompt = ""
+
     def do_uci(self, arg: str) -> None:
         if options.debug:
             self._log_to_file(f"uci {arg}")
