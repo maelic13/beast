@@ -52,22 +52,22 @@ def heuristic(fen: str, options: Options) -> int:
             return -25500
         return 0
 
-    if options.fiftyMoveRule and int(fen.split(' ')[4]) >= 100:
+    if options.fifty_move_rule and int(fen.split(' ')[4]) >= 100:
         return 0
 
     # tablebase probing
     evaluation = 0
-    if len(board.piece_map()) <= options.syzygyProbeLimit and options.syzygyPath != '<empty>':
-        with open_tablebase(options.syzygyPath) as tablebase:
+    if len(board.piece_map()) <= options.syzygy_probe_limit and options.syzygy_path != '<empty>':
+        with open_tablebase(options.syzygy_path) as tablebase:
             wdl = tablebase.get_wdl(board)
 
-        if options.fiftyMoveRule and wdl == 2:
+        if options.fifty_move_rule and wdl == 2:
             evaluation = 12800
-        elif options.fiftyMoveRule and wdl == -2:
+        elif options.fifty_move_rule and wdl == -2:
             evaluation = -12800
-        elif not options.fiftyMoveRule and wdl == 1:
+        elif not options.fifty_move_rule and wdl == 1:
             evaluation = 12800
-        elif not options.fiftyMoveRule and wdl == -1:
+        elif not options.fifty_move_rule and wdl == -1:
             evaluation = -12800
         else:
             return 0
@@ -147,7 +147,7 @@ def nn_evaluation(board: Board, options: Options) -> int:
     :param options: search options
     :return: evaluation
     """
-    if '3-100k' in options.modelFile:
+    if '3-100k' in options.model_file:
         data = np.array([fen_to_input(board.fen())])
         evaluation = (options.model.predict_classes(data)[0] - 3) * 100 + randrange(-50, 51, 1)
         return int(evaluation)
@@ -158,7 +158,7 @@ def nn_evaluation(board: Board, options: Options) -> int:
             return int(evaluation)
         else:
             return -int(evaluation)
-    elif '100k' in options.modelFile:
+    elif '100k' in options.model_file:
         data = np.array([fen_to_input(board.fen())])
         evaluation = options.model.predict(data, verbose=0)
         return int(round(evaluation[0][0] * 2000))

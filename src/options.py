@@ -8,16 +8,16 @@ class Options:
         """ Constructor. """
         self.debug = False						# debug option
         self.threads = 1						# number of threads
-        self.fiftyMoveRule = True				# whether to play with 50-move rule or not
-        self.syzygyPath = "<empty>"				# path to syzygy tablebases
-        self.syzygyProbeLimit = 6				# probe limit for syzygy tablebases
-        self.timeFlex = 10						# time flex for time management
-        self.searchAlgorithm = "AlphaBeta"		# search algorithm
+        self.fifty_move_rule = True				# whether to play with 50-move rule or not
+        self.syzygy_path = "<empty>"			# path to syzygy tablebases
+        self.syzygy_probe_limit = 6				# probe limit for syzygy tablebases
+        self.time_flex = 10						# time flex for time management
+        self.search_algorithm = "alphabeta"		# search algorithm
         self.flag = Event()						# flag to start go function
         self.quiescence = True
-        self.heuristic = "Classic"				# type of heuristic
-        self.network = "Regression"				# type of neural network system
-        self.modelFile = "nets/bnn_2-100-2.h5"
+        self.heuristic = "classical"		    # type of heuristic
+        self.network = "regression"				# type of neural network system
+        self.model_file = "nets/bnn.2-100k-2.h5"
         self.model = None                       # loaded keras model if available during search
 
     def set(self, option: str, value: str) -> None:
@@ -37,17 +37,17 @@ class Options:
             self.threads = int(value)
         elif option == "syzygy50moverule":
             if value in ["true", "1"]:
-                self.fiftyMoveRule = True
+                self.fifty_move_rule = True
             elif value in ["false", "0"]:
-                self.fiftyMoveRule = False
+                self.fifty_move_rule = False
         elif option == "timeflex":
-            self.timeFlex = int(value)
+            self.time_flex = int(value)
         elif option == "searchalgorithm":
-            self.searchAlgorithm = value
+            self.search_algorithm = value
         elif option == "syzzygypath":
-            self.syzygyPath = value.replace('\\', '/')
+            self.syzygy_path = value.replace('\\', '/')
         elif option == "syzygyprobelimit":
-            self.syzygyProbeLimit = int(value)
+            self.syzygy_probe_limit = int(value)
         elif option == "quiescence":
             if value in ["true", "1"]:
                 self.quiescence = True
@@ -58,7 +58,7 @@ class Options:
         elif option == "network":
             self.network = value
         elif option == "modelfile":
-            self.modelFile = value.replace('\\', '/')
+            self.model_file = value.replace('\\', '/')
 
     def value(self, option: str) -> Any:
         """
@@ -73,9 +73,9 @@ class Options:
         elif option == "threads":
             return self.threads
         elif option == "syzygypath":
-            return self.syzygyPath
+            return self.syzygy_path
         elif option == "syzygyprobelimit":
-            return self.syzygyProbeLimit
+            return self.syzygy_probe_limit
         elif option == "quiescence":
             return self.quiescence
         elif option == "heuristic":
@@ -83,4 +83,4 @@ class Options:
         elif option == "network":
             return self.network
         elif option == "modelfile":
-            return self.modelFile
+            return self.model_file

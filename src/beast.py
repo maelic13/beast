@@ -25,20 +25,22 @@ class UciLoop(Cmd):
         print()
         print(f"option name Threads type spin default {options.threads} min 1 max 1")
         # time flexibility in ms so engine could make a move in time and did not lose on time
-        print(f"option name TimeFlex type spin default {options.timeFlex} min 0 max 1000")
+        print(f"option name TimeFlex type spin default {options.time_flex} min 0 max 1000")
         # types of search algorithms
-        print(f"option name SearchAlgorithm type combo default {options.searchAlgorithm} var AlphaBeta")
+        print(f"option name SearchAlgorithm type combo default {options.search_algorithm} "
+              f"var AlphaBeta")
         print(f"option name Quiescence type check default {options.quiescence}")
         # path to syzygy tablebases
-        print(f"option name SyzygyPath type string default {options.syzygyPath}")
+        print(f"option name SyzygyPath type string default {options.syzygy_path}")
         # probe limit for syzygy
-        print(f"option name SyzygyProbeLimit type spin default {options.syzygyProbeLimit} min 0 max 7")
-        print(f"option name Syzygy50MoveRule type check default {options.fiftyMoveRule}")
+        print(f"option name SyzygyProbeLimit type spin default {options.syzygy_probe_limit} "
+              f"min 0 max 7")
+        print(f"option name Syzygy50MoveRule type check default {options.fifty_move_rule}")
         print(f"option name Heuristic type combo default {options.heuristic} "
               f"var Classic var NeuralNetwork var Random")
         print(f"option name Network type combo default {options.network} "
               f"var Regression var Classification")
-        print(f"option name ModelFile type string default {options.modelFile}")
+        print(f"option name ModelFile type string default {options.model_file}")
         print("uciok")
 
     def do_quit(self, arg: str) -> bool:

@@ -35,15 +35,15 @@ def main(go_params: GoParameters, options: Options) -> None:
 
     # load model if needed
     if options.heuristic == 'neuralnetwork' and options.network == 'regression':
-        if options.modelFile == '<default>':
+        if options.model_file == '<default>':
             options.model = load_model('regression.h5')
         else:
-            options.model = load_model(options.modelFile)
+            options.model = load_model(options.model_file)
     elif options.heuristic == 'neuralnetwork' and options.network == 'classification':
-        if options.modelFile == '<default>':
+        if options.model_file == '<default>':
             options.model = load_model('classification.h5')
         else:
-            options.model = load_model(options.modelFile)
+            options.model = load_model(options.model_file)
     elif options.heuristic == "random":
         go_params.depth = 1
 
@@ -105,7 +105,7 @@ def negamax(node: Node, depth: int, alpha: int, beta: int, flag: Event, options:
 
         # heuristic
         if options.quiescence:
-            ev, nodes = quiesce(node.position, alpha, beta, flag, options)
+            ev, nodes = quiescence(node.position, alpha, beta, flag, options)
             return ev, nodes, []
         else:
             ev = heuristic(node.position, options)
@@ -158,7 +158,7 @@ def negamax(node: Node, depth: int, alpha: int, beta: int, flag: Event, options:
     return alpha, nodes, best_pv
 
 
-def quiesce(fen: str, alpha: int, beta: int, flag: Event, options: Options) -> tuple[int, int]:
+def quiescence(fen: str, alpha: int, beta: int, flag: Event, options: Options) -> tuple[int, int]:
     """
     Quiescence search checks all possible captures and checks to ensure not returning
     evaluation of position in-between captures or lost after simple check.
@@ -208,7 +208,7 @@ def quiesce(fen: str, alpha: int, beta: int, flag: Event, options: Options) -> t
                 if stand_pat + value < alpha:
                     continue
 
-            score, count = quiesce(new.fen(), -beta, -alpha, flag, options)
+            score, count = quiescence(new.fen(), -beta, -alpha, flag, options)
             score = -score
             nodes += count
 

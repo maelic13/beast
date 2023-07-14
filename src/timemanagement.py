@@ -15,14 +15,14 @@ def get_time_for_move(go_parameters: GoParameters, options: Options, turn: bool)
         return 0
 
     if go_parameters.movetime is not None:
-        time = (go_parameters.movetime - options.timeFlex) / 1000
+        time = (go_parameters.movetime - options.time_flex) / 1000
         return time
 
     if turn and go_parameters.wtime is not None:
-        time = (0.2 * go_parameters.wtime - options.timeFlex) / 1000
+        time = (0.2 * go_parameters.wtime - options.time_flex) / 1000
         return time
     if not turn and go_parameters.btime is not None:
-        time = (0.2 * go_parameters.btime - options.timeFlex) / 1000
+        time = (0.2 * go_parameters.btime - options.time_flex) / 1000
         return time
 
     return 0
