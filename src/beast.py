@@ -63,9 +63,9 @@ class options():
         self.searchAlgorithm = 'AlphaBeta'		# search algorithm
         self.flag = Event()						# flag to start go function
         self.quiescence = True
-        self.heuristic = 'Classic'				# type of heuristic
+        self.heuristic = 'NeuralNetwork'		# type of heuristic
         self.network = 'Regression'				# type of neural network system
-        self.modelFile = 'nets/bnn_2-100-2.h5'
+        self.modelFile = 'D:/Code/beast/src/bnn.2-100k-2.h5'
         self.model = None
 
     def set(self, option, value):
@@ -318,6 +318,11 @@ def go():
 
 # MAIN + INITIALIZATIONS
 if __name__ == '__main__':
+    # do not log unnecessary tensorflow messages
+    environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+    # disable GPU for model evaluation even if available (slower than cpu for small beast nets)
+    environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
     opt = options()						# global engine options
     goParams = goParameters()			# parameters for current search
     task = Queue(maxsize=0)				# queue for communication between threads

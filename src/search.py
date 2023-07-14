@@ -1,11 +1,8 @@
-import logging
-logging.getLogger('tensorflow').setLevel(logging.FATAL)
-
 import time
 
 from chess import Board
-from tensorflow.keras.models import load_model
-from tensorflow.keras.backend import clear_session
+from keras.backend import clear_session
+from keras.models import load_model
 from threading import Timer
 
 import heuristic

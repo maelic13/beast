@@ -1,7 +1,3 @@
-# needed to suppress unwanted messages in console
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-
 import numpy as np
 
 import chess
@@ -421,18 +417,18 @@ def nn_heuristic(fen, options, model):
                 return -int(eval) + tab_eval
         elif 'model4_50k_wrong' in options.modelFile:
             data = np.array([fen_to_pieces_input(fen)])
-            eval = model.predict(data)
+            eval = model.predict(data, verbose=0)
             if board.turn:
                 return int(round(eval[0][0] * 2000)) + tab_eval
             else:
                 return -int(round(eval[0][0] * 2000)) + tab_eval
         elif '100k' in options.modelFile:
             data = np.array([fen_to_input(fen)])
-            eval = model.predict(data)
+            eval = model.predict(data, verbose=0)
             return int(round(eval[0][0] * 2000)) + tab_eval
         else:
             data = np.array([fen_to_input(fen)])
-            eval = model.predict(data)
+            eval = model.predict(data, verbose=0)
             if board.turn:
                 return int(round(eval[0][0] * 2000)) + tab_eval
             else:
