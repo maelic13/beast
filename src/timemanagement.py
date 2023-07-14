@@ -1,18 +1,28 @@
-def timeForMove(goParams, options, turn):
-    if goParams.winc is None:
-        goParams.winc = 0
-        goParams.binc = 0
+from go_parameters import GoParameters
+from options import Options
 
-    if goParams.infinite or goParams.ponder or (goParams.depth is not None) \
-            or (goParams.nodes is not None):
+
+def get_time_for_move(go_parameters: GoParameters, options: Options, turn: bool) -> float:
+    """
+    Return time to take for calculating the next move for side to move in seconds, to be used
+    in timer to reset flag and signal stop of calculation.
+    :param go_parameters: parameters
+    :param options: options
+    :param turn: side to move
+    :return: time in seconds
+    """
+    if go_parameters.infinite or go_parameters.ponder:
         return 0
-    if goParams.movetime is not None:
-        time = (goParams.movetime - options.timeFlex) / 1000
+
+    if go_parameters.movetime is not None:
+        time = (go_parameters.movetime - options.timeFlex) / 1000
         return time
-    else:
-        if turn:
-            time = (0.2 * goParams.wtime - options.timeFlex) / 1000
-            return time
-        else:
-            time = (0.2 * goParams.btime - options.timeFlex) / 1000
-            return time
+
+    if turn and go_parameters.wtime is not None:
+        time = (0.2 * go_parameters.wtime - options.timeFlex) / 1000
+        return time
+    if not turn and go_parameters.btime is not None:
+        time = (0.2 * go_parameters.btime - options.timeFlex) / 1000
+        return time
+
+    return 0
