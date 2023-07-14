@@ -86,9 +86,9 @@ class DataHelper:
             score = stockfish.analyse(Board(fen=position), Limit(depth=10))["score"]
             analysed_positions.append((position, score.relative.wdl().expectation()))
             if len(analysed_positions) % log_after == 0:
-                cls._log_evaluating_progress(f"{current_process().name}", start_time,
-                                             local_start_time, len(analysed_positions), log_after,
-                                             len(data))
+                cls._log_evaluating_progress(
+                    f"{current_process().name}", start_time, local_start_time,
+                    len(analysed_positions), log_after, len(data))
                 local_start_time = time()
         stockfish.close()
         return analysed_positions
