@@ -42,22 +42,26 @@ class ModelTrainer:
         return fens, evals
 
     @staticmethod
-    def load_numpy_data(path_to_folder: str) -> tuple[np.ndarray, np.ndarray]:
-        return np.load(path_to_folder + "/inputs.npy"), np.load(path_to_folder + "/outputs.npy")
+    def load_numpy_data(path_to_folder: str, name: str) -> tuple[np.ndarray, np.ndarray]:
+        return (np.load(path_to_folder + f"/{name}_inputs.npy"),
+                np.load(path_to_folder + f"/{name}_outputs.npy"))
 
     @staticmethod
-    def save_numpy_data(path_to_folder: str, inputs: Iterable[Any], outputs: Iterable[Any]) -> None:
+    def save_numpy_data(path_to_folder: str, name: str, inputs: Iterable[Any],
+                        outputs: Iterable[Any]) -> None:
         """
         Save already processed data for neural network training in numpy format for fast loading.
         :param path_to_folder: path to folder for inputs.npy and outputs.npy files
+        :param name: prefix for name of the files
         :param inputs: processed input positions
         :param outputs: processed output evaluations
         """
-        np.save(path_to_folder + "/inputs.npy", inputs)
-        np.save(path_to_folder + "/outputs.npy", outputs)
+        np.save(path_to_folder + f"/{name}_inputs.npy", inputs)
+        np.save(path_to_folder + f"/{name}_outputs.npy", outputs)
 
     @classmethod
-    def train_ffnn(cls, x_train, x_test, y_train, y_test) -> tuple[Sequential, History]:
+    def train_ffnn(cls, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray,
+                   y_test: np.ndarray) -> tuple[Sequential, History]:
         model = Sequential()
         model.add(Conv2D(128, kernel_size=3, input_shape=x_train[0].shape))
         model.add(BatchNormalization())
@@ -96,10 +100,19 @@ class ModelTrainer:
     @staticmethod
     def eval_model(model: Sequential, x_test: Iterable[np.ndarray], y_test: Iterable[np.ndarray]):
         # Test model and print score
-        model.save("model.keras")
         score, acc = model.evaluate(x_test, y_test, batch_size=128)
         print(f"Test score: {score}")
         print(f"Test accuracy: {acc}")
+
+    @staticmethod
+    def save_model(model: Sequential, folder_path: str, name: str) -> None:
+        """
+        Save trained model in *.keras format.
+        :param model: model to save
+        :param folder_path: path to target folder
+        :param name: name of the model
+        """
+        model.save(f"{folder_path}/{name}.keras")
 
     @classmethod
     def convert_fen_positions_to_input_structures(cls, fens: Iterable[str]) -> list[np.ndarray]:
@@ -139,17 +152,18 @@ if __name__ == "__main__":
     environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 
     # load data from txt file, conversion needed (long)
-    # positions, evaluations = ModelTrainer.load_txt_data("../data/evaluated_positions.txt")
+    # positions, evaluations = ModelTrainer.load_txt_data("data/games.txt")
     # positions = ModelTrainer.convert_fen_positions_to_input_structures(positions)
 
     # save numpy data (overwrite)
-    # ModelTrainer.save_numpy_data(".", positions, evaluations)
+    # ModelTrainer.save_numpy_data("data", "games", positions, evaluations)
 
     # load data from numpy file (fast)
-    positions, evaluations = ModelTrainer.load_numpy_data(".")
+    positions, evaluations = ModelTrainer.load_numpy_data("data", "games")
 
     x_tr, x_te, y_tr, y_te = train_test_split(
         positions, evaluations, test_size=0.2, random_state=42)
 
     trained_model, _ = ModelTrainer.train_ffnn(x_tr, x_te, y_tr, y_te)
     ModelTrainer.eval_model(trained_model, x_te, y_te)
+    ModelTrainer.save_model(trained_model, "models", "games")
