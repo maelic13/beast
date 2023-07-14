@@ -1,7 +1,6 @@
 keras
-matplotlib
 numpy
 python-chess
-sklearn
+scikit-learn
 tensorflow
 tqdm

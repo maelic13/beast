@@ -5,8 +5,8 @@ from keras.backend import clear_session
 from keras.models import load_model
 from threading import Timer
 
-import heuristic
-import timemanagement as tm
+from heuristic import heuristic, nn_heuristic, random_heuristic
+from timemanagement import timeForMove
 
 
 class Node:
@@ -18,9 +18,9 @@ class Node:
         self.previous = []
 
 
-def main(goParams, options):
+def main(go_params, options):
     # initialize values
-    root = goParams.root
+    root = go_params.root
     depth = 0
     if root.position.split(' ')[1] == 'w':
         root_turn = True
@@ -29,9 +29,9 @@ def main(goParams, options):
 
     # time management + timer
     start = time.time()
-    timeForMove = tm.timeForMove(goParams, options, root_turn)
-    if timeForMove > 0:
-        timer = Timer(timeForMove, clearFlag, args=[options.flag])
+    time_for_move = timeForMove(go_params, options, root_turn)
+    if time_for_move > 0:
+        timer = Timer(time_for_move, clear_flag, args=[options.flag])
         timer.start()
 
     # load model if needed
@@ -46,10 +46,10 @@ def main(goParams, options):
         else:
             options.model = load_model(options.modelFile)
     elif options.heuristic == "Random":
-        goParams.depth = 1
+        go_params.depth = 1
 
     # main loop of iterative expansion
-    while conditionsMet(depth, goParams, options.flag):
+    while conditions_met(depth, go_params, options.flag):
         # search
         temp_eval, temp_nodes_count, temp_pv = negamax(
             root, depth + 1, -100000, 100000, options.flag, options)
@@ -75,12 +75,12 @@ def main(goParams, options):
     clear_session()
 
 
-def clearFlag(flag):
+def clear_flag(flag):
     flag.clear()
 
 
-def conditionsMet(depth, goParams, flag):
-    if depth == goParams.depth or not flag.is_set():
+def conditions_met(depth, go_params, flag):
+    if depth == go_params.depth or not flag.is_set():
         return False
     else:
         return True
@@ -92,7 +92,7 @@ def negamax(node, depth, alpha, beta, flag, options):
         return 0, 0, []
 
     # leaf node
-    if(depth == 0):
+    if depth == 0:
         # 3-fold repetition check
         fen = node.position.split(' ')
         prev = ' '.join(fen[:2])
@@ -105,17 +105,17 @@ def negamax(node, depth, alpha, beta, flag, options):
             return ev, nodes, []
         else:
             if options.heuristic == 'NeuralNetwork':
-                ev = heuristic.nn_heuristic(node.position, options, options.model)
+                ev = nn_heuristic(node.position, options, options.model)
             elif options.heuristic == 'Random':
-                ev = heuristic.random_heuristic()
+                ev = random_heuristic()
             else:
-                ev = heuristic.heuristic(node.position, options)
+                ev = heuristic(node.position, options)
 
             node.eval = ev
             return ev, 1, []
 
     # expansion
-    if node.next == []:
+    if not node.next:
         board = Board(node.position)
         legal = board.legal_moves
         fen = node.position.split(' ')
@@ -129,11 +129,11 @@ def negamax(node, depth, alpha, beta, flag, options):
 
             # heuristic
             if options.heuristic == 'NeuralNetwork':
-                ev = heuristic.nn_heuristic(node.position, options, options.model)
+                ev = nn_heuristic(node.position, options, options.model)
             elif options.heuristic == 'Random':
-                ev = heuristic.random_heuristic()
+                ev = random_heuristic()
             else:
-                ev = heuristic.heuristic(node.position, options)
+                ev = heuristic(node.position, options)
 
             node.eval = ev
             return ev, 1, []
@@ -156,9 +156,9 @@ def negamax(node, depth, alpha, beta, flag, options):
         nodes += count
         pv.insert(0, new.move)
 
-        if(score >= beta):
+        if score >= beta:
             return beta, nodes, []
-        if(score > alpha):
+        if score > alpha:
             alpha = score
             best_pv = pv
 
@@ -172,15 +172,15 @@ def quiesce(fen, alpha, beta, flag, options):
 
     # heuristic
     if options.heuristic == 'NeuralNetwork':
-        stand_pat = heuristic.nn_heuristic(fen, options, options.model)
+        stand_pat = nn_heuristic(fen, options, options.model)
     elif options.heuristic == 'Random':
-        stand_pat = heuristic.random_heuristic()
+        stand_pat = random_heuristic()
     else:
-        stand_pat = heuristic.heuristic(fen, options)
+        stand_pat = heuristic(fen, options)
 
     nodes = 1
 
-    if(stand_pat >= beta):
+    if stand_pat >= beta:
         return beta, nodes
 
     board = Board(fen)
@@ -191,10 +191,10 @@ def quiesce(fen, alpha, beta, flag, options):
 
     if delta:
         # full delta pruning
-        if (stand_pat < alpha - 1000):
+        if stand_pat < alpha - 1000:
             return alpha, nodes
 
-    if(stand_pat > alpha):
+    if stand_pat > alpha:
         alpha = stand_pat
 
     # expansion and search
@@ -208,16 +208,16 @@ def quiesce(fen, alpha, beta, flag, options):
             # delta pruning
             if delta and board.is_capture(move):
                 value = value_captured_piece(board.piece_type_at(move.to_square)) + 200
-                if (stand_pat + value < alpha):
+                if stand_pat + value < alpha:
                     continue
 
             score, count = quiesce(new.fen(), -beta, -alpha, flag, options)
             score = -score
             nodes += count
 
-            if(score >= beta):
+            if score >= beta:
                 return beta, nodes
-            if(score > alpha):
+            if score > alpha:
                 alpha = score
     return alpha, nodes
 

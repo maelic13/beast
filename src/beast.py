@@ -1,13 +1,12 @@
 from os import environ
-environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-import cmd
-import search
 
 from chess import Board, Move
+from cmd import Cmd
 from queue import Queue
-from search import Node
 from threading import Thread, Event
+
+from search import main as search_main, Node
+
 
 # VARIABLES
 engineName = 'Beast 1.01'
@@ -15,9 +14,10 @@ author = 'Miloslav Macurek'
 
 
 # CLASSES
-class goParameters:
+class GoParameters:
     def __init__(self):
         # position
+        self.moves = ""
         self.root = Node('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
 
         # time parameters
@@ -38,7 +38,7 @@ class goParameters:
         self.ponder = False
 
     def reset(self):
-        self.moves = ''
+        self.moves = ""
         self.wtime = None
         self.btime = None
         self.winc = None
@@ -52,7 +52,7 @@ class goParameters:
         self.infinite = False
 
 
-class options():
+class Options:
     def __init__(self):
         self.debug = False						# debug option
         self.threads = 1						# number of threads
@@ -63,9 +63,9 @@ class options():
         self.searchAlgorithm = 'AlphaBeta'		# search algorithm
         self.flag = Event()						# flag to start go function
         self.quiescence = True
-        self.heuristic = 'NeuralNetwork'		# type of heuristic
+        self.heuristic = 'Classic'				# type of heuristic
         self.network = 'Regression'				# type of neural network system
-        self.modelFile = 'D:/Code/beast/src/bnn.2-100k-2.h5'
+        self.modelFile = 'nets/bnn_2-100-2.h5'
         self.model = None
 
     def set(self, option, value):
@@ -96,7 +96,7 @@ class options():
         elif option in ['Heuristic', 'heuristic']:
             self.heuristic = value
             if value in ['random', 'Random']:
-                goParams.depth = 1
+                go_params.depth = 1
         elif option in ['network', 'Network']:
             self.network = value
         elif option in ['modelfile', 'ModelFile']:
@@ -121,7 +121,7 @@ class options():
             return self.modelFile
 
 
-class uciLoop(cmd.Cmd):
+class UciLoop(Cmd):
     prompt = ''
 
     def do_uci(self, arg):
@@ -221,7 +221,7 @@ class uciLoop(cmd.Cmd):
             f.write(arg)
             f.write('\n')
             f.close()
-        goParams.position = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+        go_params.position = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
     def do_position(self, arg):
         if opt.debug:
@@ -251,9 +251,9 @@ class uciLoop(cmd.Cmd):
                 fen = arguments
                 moves = None
 
-        goParams.root = get_root(fen, moves)
+        go_params.root = get_root(fen, moves)
         if opt.debug:
-            print(goParams.root.position)
+            print(go_params.root.position)
 
 
 # FUNCTIONS
@@ -269,17 +269,17 @@ def get_root(fen, moves):
     return root
 
 
-def parseParams(goParams, string):
+def parse_params(go_params, string):
     run = True
     while run:
         if string == 'infinite':
-            goParams.infinite = True
+            go_params.infinite = True
             break
         elif string == 'ponder':
-            goParams.ponder = True
+            go_params.ponder = True
             break
         elif string == '':
-            goParams.depth = 2
+            go_params.depth = 2
             break
         try:
             [command, param, string] = string.split(' ', 2)
@@ -288,31 +288,31 @@ def parseParams(goParams, string):
             run = False
 
         if command == 'wtime':
-            goParams.wtime = int(param)
+            go_params.wtime = int(param)
         elif command == 'btime':
-            goParams.btime = int(param)
+            go_params.btime = int(param)
         elif command == 'winc':
-            goParams.winc = int(param)
+            go_params.winc = int(param)
         elif command == 'binc':
-            goParams.binc = int(param)
+            go_params.binc = int(param)
         elif command == 'movestogo':
-            goParams.movesToGo = int(param)
+            go_params.movesToGo = int(param)
         elif command == 'depth':
-            goParams.depth = int(param)
+            go_params.depth = int(param)
         elif command == 'nodes':
-            goParams.nodes = int(param)
+            go_params.nodes = int(param)
         elif command == 'mate':
-            goParams.mate = int(param)
+            go_params.mate = int(param)
         elif command == 'movetime':
-            goParams.movetime = int(param)
+            go_params.movetime = int(param)
 
 
 def go():
     while True:
         opt.flag.wait()
-        goParams.reset()
-        parseParams(goParams, task.get())
-        search.main(goParams, opt)
+        go_params.reset()
+        parse_params(go_params, task.get())
+        search_main(go_params, opt)
         opt.flag.clear()
 
 
@@ -323,8 +323,8 @@ if __name__ == '__main__':
     # disable GPU for model evaluation even if available (slower than cpu for small beast nets)
     environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-    opt = options()						# global engine options
-    goParams = goParameters()			# parameters for current search
+    opt = Options()						# global engine options
+    go_params = GoParameters()			# parameters for current search
     task = Queue(maxsize=0)				# queue for communication between threads
 
     worker = Thread(target=go)			# worker thread
@@ -333,4 +333,4 @@ if __name__ == '__main__':
     print(engineName, 'by', author)
 
     worker.start()
-    uciLoop().cmdloop()
+    UciLoop().cmdloop()
