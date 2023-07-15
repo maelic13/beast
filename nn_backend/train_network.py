@@ -3,18 +3,11 @@ from os import environ
 from time import time
 from typing import Any
 
-from chess import BISHOP, Board, KING, KNIGHT, PAWN, QUEEN, ROOK
 import numpy as np
 
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import Sequential
-from tensorflow.keras.activations import relu, sigmoid
-from tensorflow.keras.callbacks import EarlyStopping, History
-from tensorflow.keras.layers import (
-    Activation, BatchNormalization, Conv2D, Dense, Dropout, Flatten)
-from tensorflow.keras.losses import BinaryCrossentropy
-from tensorflow.keras.metrics import BinaryAccuracy
-from tensorflow.keras.optimizers import Adam
+
+from beast_neural_network import BeastNeuralNetwork
 
 
 class ModelTrainer:
@@ -38,7 +31,7 @@ class ModelTrainer:
             fens.append(temp[0])
             evals.append(float(temp[1]))
 
-        print(f"Data loaded in {time() - start} seconds.\n")
+        print(f"Data loaded in {int(time() - start)} seconds.\n")
         return fens, evals
 
     @staticmethod
@@ -59,111 +52,24 @@ class ModelTrainer:
         np.save(path_to_folder + f"/{name}_inputs.npy", inputs)
         np.save(path_to_folder + f"/{name}_outputs.npy", outputs)
 
-    @classmethod
-    def train_ffnn(cls, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray,
-                   y_test: np.ndarray) -> tuple[Sequential, History]:
-        model = Sequential()
-        model.add(Conv2D(128, kernel_size=3, input_shape=x_train[0].shape))
-        model.add(BatchNormalization())
-        model.add(Activation(relu))
-
-        model.add(Conv2D(256, kernel_size=3))
-        model.add(BatchNormalization())
-        model.add(Activation(relu))
-
-        model.add(Flatten())
-
-        model.add(Dense(256))
-        model.add(Activation(relu))
-        model.add(Dropout(0.5))
-
-        model.add(Dense(1))
-        model.add(Activation(sigmoid))
-
-        model.compile(
-            loss=BinaryCrossentropy(),
-            optimizer=Adam(learning_rate=0.0001),
-            metrics=[BinaryAccuracy()]
-        )
-
-        history = model.fit(
-            x_train,
-            y_train,
-            batch_size=256,
-            epochs=128,
-            validation_data=(x_test, y_test),
-            callbacks=[EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=8)]
-        )
-
-        return model, history
-
-    @staticmethod
-    def eval_model(model: Sequential, x_test: Iterable[np.ndarray], y_test: Iterable[np.ndarray]):
-        # Test model and print score
-        score, acc = model.evaluate(x_test, y_test, batch_size=128)
-        print(f"Test score: {score}")
-        print(f"Test accuracy: {acc}")
-
-    @staticmethod
-    def save_model(model: Sequential, folder_path: str, name: str) -> None:
-        """
-        Save trained model in *.keras format.
-        :param model: model to save
-        :param folder_path: path to target folder
-        :param name: name of the model
-        """
-        model.save(f"{folder_path}/{name}.keras")
-
-    @classmethod
-    def convert_fen_positions_to_input_structures(cls, fens: Iterable[str]) -> list[np.ndarray]:
-        """
-        Convert iterable of FEN strings to list of input structures for neural network training.
-        :param fens: positions in FEN format
-        :return: positions in input format for neural network training
-        """
-        start = time()
-        print("Converting FEN positions to inputs...")
-        input_positions: list[np.ndarray] = []
-        for fen in fens:
-            input_positions.append(cls.fen_to_input(fen))
-        print(f"Inputs created in {time() - start} seconds.\n")
-        return input_positions
-
-    @staticmethod
-    def fen_to_input(fen: str) -> np.ndarray:
-        """
-        Convert board position in FEN notation to input structure for neural network training.
-        :param fen: string representing board position
-        :return: (6, 8, 8) shape numpy array with each layer representing 1 chess piece type
-            in order [pawn, knight, bishop, rook, queen, king]. Each piece type layer is (8, 8)
-            shaped representing chess board with 1 in square of own piece of the type
-            and -1 in square of opponents piece.
-        """
-        board = Board(fen)
-        return np.asarray([
-            np.reshape(
-                np.asarray(board.pieces(piece_type, board.turn).tolist(), int)
-                - np.asarray(board.pieces(piece_type, not board.turn).tolist(), int),
-                (8, 8))
-            for piece_type in [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING]])
-
 
 if __name__ == "__main__":
     environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
+    beast_neural_network = BeastNeuralNetwork()
 
     # load data from txt file, conversion needed (long)
-    # positions, evaluations = ModelTrainer.load_txt_data("data/games.txt")
-    # positions = ModelTrainer.convert_fen_positions_to_input_structures(positions)
+    positions, evaluations = ModelTrainer.load_txt_data("games.txt")
+    positions = beast_neural_network.convert_fen_positions_to_input_structures(positions)
 
     # save numpy data (overwrite)
-    # ModelTrainer.save_numpy_data("data", "games", positions, evaluations)
+    ModelTrainer.save_numpy_data(".", "games", positions, evaluations)
 
     # load data from numpy file (fast)
-    positions, evaluations = ModelTrainer.load_numpy_data("data", "games")
+    positions, evaluations = ModelTrainer.load_numpy_data(".", "games")
 
     x_tr, x_te, y_tr, y_te = train_test_split(
         positions, evaluations, test_size=0.2, random_state=42)
 
-    trained_model, _ = ModelTrainer.train_ffnn(x_tr, x_te, y_tr, y_te)
-    ModelTrainer.eval_model(trained_model, x_te, y_te)
-    ModelTrainer.save_model(trained_model, "models", "games")
+    beast_neural_network.train_model(x_tr, x_te, y_tr, y_te)
+    beast_neural_network.evaluate_model(x_te, y_te)
+    beast_neural_network.save_model(".", "games")

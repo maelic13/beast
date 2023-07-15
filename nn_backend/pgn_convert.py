@@ -136,7 +136,7 @@ class DataHelper:
 
 
 if __name__ == "__main__":
-    files = ["games.pgn"]
+    files = ["databases/games.pgn"]
 
     start = time()
     extracted_positions = DataHelper.parse_pgn_files(files)
@@ -161,5 +161,5 @@ if __name__ == "__main__":
           f"{int((time() - start) % 60)} seconds.")
 
     start = time()
-    DataHelper.save_evaluated_data_to_file(evaluated_positions, "evaluated_positions.txt")
+    DataHelper.save_evaluated_data_to_file(evaluated_positions, "data/games.txt")
     print(f"Saving took {round(time() - start, 2)} seconds.")
