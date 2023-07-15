@@ -1,7 +1,5 @@
 from multiprocessing import current_process, cpu_count, Pool
 from time import time
-from tqdm import tqdm
-from typing import List, Optional, Tuple
 
 from chess import Board
 from chess.engine import Limit, SimpleEngine
@@ -12,16 +10,16 @@ class DataHelper:
     _stockfish_path = "stockfish.exe"
 
     @classmethod
-    def parse_pgn_files(cls, game_file_names: List[str]) -> List[str]:
-        positions: List[str] = []
+    def parse_pgn_files(cls, game_file_names: list[str]) -> list[str]:
+        positions: list[str] = []
         with Pool() as pool:
             for sub_result in pool.map(cls._get_positions, game_file_names):
                 positions += sub_result
         return positions
 
     @classmethod
-    def _get_positions(cls, file_name: str) -> List[str]:
-        positions: List[str] = []
+    def _get_positions(cls, file_name: str) -> list[str]:
+        positions: list[str] = []
         num_games = 0
         log_after = 10000
         start_time = time()
@@ -42,7 +40,7 @@ class DataHelper:
 
     @classmethod
     def _log_extracting_progress(cls, file_name: str, start_time: float, local_start_time: float,
-                                 games_number: int, log_games_number: Optional[int],
+                                 games_number: int, log_games_number: int | None,
                                  positions_number: int) -> None:
         current_time = time()
         seconds = int((current_time - start_time) % 60)
@@ -56,8 +54,8 @@ class DataHelper:
         print()
 
     @staticmethod
-    def _parse_game(game: Game) -> List[str]:
-        positions: List[str] = []
+    def _parse_game(game: Game) -> list[str]:
+        positions: list[str] = []
         board = game.board()
         for move in game.mainline_moves():
             board.push(move)
@@ -65,19 +63,11 @@ class DataHelper:
         return positions
 
     @classmethod
-    def evaluate(cls, positions: List[str]) -> List[Tuple[str, float]]:
-        results = []
-        for result in tqdm(Pool(processes=8).imap_unordered(cls._evaluate_position, positions),
-                           total=len(positions)):
-            results.append(result)
-        return results
-
-    @classmethod
-    def evaluate2(cls, positions: List[str], num_processes: Optional[int] = None
-                  ) -> List[Tuple[str, float]]:
+    def evaluate(cls, positions: list[str], num_processes: int | None = None
+                 ) -> list[tuple[str, float]]:
         num_processes = num_processes or cpu_count()
-        eval_positions: List[Tuple[str, float]] = []
-        positions = cls._parse_data(positions, num_processes)
+        eval_positions: list[tuple[str, float]] = []
+        positions = cls.parse_data(positions, num_processes)
 
         with Pool(processes=num_processes) as pool:
             for sub_result in pool.map(cls._evaluate_positions, positions):
@@ -85,34 +75,27 @@ class DataHelper:
         return eval_positions
 
     @classmethod
-    def _evaluate_positions(cls, data: List[str]) -> List[Tuple[str, float]]:
+    def _evaluate_positions(cls, data: list[str]) -> list[tuple[str, float]]:
         log_after = 1000
         start_time = time()
         local_start_time = time()
 
-        analysed_positions: List[Tuple[str, float]] = []
+        analysed_positions: list[tuple[str, float]] = []
         stockfish = SimpleEngine.popen_uci(cls._stockfish_path)
         for position in data:
             score = stockfish.analyse(Board(fen=position), Limit(depth=10))["score"]
             analysed_positions.append((position, score.relative.wdl().expectation()))
             if len(analysed_positions) % log_after == 0:
-                cls._log_evaluating_progress(f"{current_process().name}", start_time,
-                                             local_start_time, len(analysed_positions), log_after,
-                                             len(data))
+                cls._log_evaluating_progress(
+                    f"{current_process().name}", start_time, local_start_time,
+                    len(analysed_positions), log_after, len(data))
                 local_start_time = time()
         stockfish.close()
         return analysed_positions
 
     @classmethod
-    def _evaluate_position(cls, position: str) -> Tuple[str, float]:
-        stockfish = SimpleEngine.popen_uci(cls._stockfish_path)
-        score = stockfish.analyse(Board(fen=position), Limit(depth=10))["score"]
-        stockfish.close()
-        return position, score.relative.wdl().expectation()
-
-    @classmethod
     def _log_evaluating_progress(cls, process_name: str, start_time: float, local_start_time: float,
-                                 positions_done: int, log_after: Optional[int],
+                                 positions_done: int, log_after: int | None,
                                  total_positions: int) -> None:
         current_time = time()
         minutes = int((current_time - start_time) / 60)
@@ -134,26 +117,26 @@ class DataHelper:
         print()
 
     @classmethod
-    def _parse_data(cls, data: List[str], num_processes: int) -> List[List[str]]:
+    def parse_data(cls, data: list[str], num_processes: int) -> list[list[str]]:
         k, m = divmod(len(data), num_processes)
         return list(data[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
                     for i in range(num_processes))
 
     @classmethod
-    def save_evaluated_data_to_file(cls, data: List[Tuple[str, float]], file_name: str) -> None:
+    def save_evaluated_data_to_file(cls, data: list[tuple[str, float]], file_name: str) -> None:
         with open(file_name, "w") as file:
             for item in data:
                 file.write(f"{item[0]}\t{item[1]}\n")
 
     @classmethod
-    def save_positions_to_file(cls, data: List[str], file_name: str) -> None:
+    def save_positions_to_file(cls, data: list[str], file_name: str) -> None:
         with open(file_name, "w") as file:
             for item in data:
                 file.write(item + "\n")
 
 
 if __name__ == "__main__":
-    files = ["games.pgn"]
+    files = ["databases/games.pgn"]
 
     start = time()
     extracted_positions = DataHelper.parse_pgn_files(files)
@@ -167,16 +150,16 @@ if __name__ == "__main__":
           f"{int((time() - start) % 60)} seconds.")
     print(f"Extracted positions after doubles elimination: {len(extracted_positions)}.\n")
 
-    start = time()
-    DataHelper.save_positions_to_file(extracted_positions, "extracted_positions.txt")
-    print(f"Saving took {int((time() - start) / 60)} minutes "
-          f"{int((time() - start) % 60)} seconds.\n")
+    # start = time()
+    # DataHelper.save_positions_to_file(extracted_positions, "positions.txt")
+    # print(f"Saving took {int((time() - start) / 60)} minutes "
+    #       f"{int((time() - start) % 60)} seconds.\n")
 
     start = time()
-    evaluated_positions = DataHelper.evaluate2(extracted_positions, num_processes=32)
+    evaluated_positions = DataHelper.evaluate(extracted_positions)
     print(f"Evaluation took {int((time() - start) / 60)} minutes "
           f"{int((time() - start) % 60)} seconds.")
 
     start = time()
-    DataHelper.save_evaluated_data_to_file(evaluated_positions, "evaluated_positions.txt")
+    DataHelper.save_evaluated_data_to_file(evaluated_positions, "data/games.txt")
     print(f"Saving took {round(time() - start, 2)} seconds.")
