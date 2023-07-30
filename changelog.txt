@@ -1,3 +1,10 @@
+v1.5
+    + 25% speed-up for classical evaluation
+    + complete typing to the engine
+    + explanatory docstrings
+    + better legacy nets support
+    + better codestyle
+
 v1.1
     - old nn_backend generating files
     + new pgn_convert with multiprocessing
@@ -28,13 +35,13 @@ v0.07:
     correction for giving eval from side to move rather than from white's point of view
     + option quiescence
     drop ponder from printing bestmove (since it does not ponder at all)
-    + neural network hauristic (two models)
+    + neural network heuristic (two models)
 
 v0.06:
     + Selective search
     + FullPruned search
     + Syzygy tablebases support
-    + pseudo quietscence search
+    + pseudo quiescence search
     rework of heuristic, solid elo gain in self-play
     correction of full expansion and pruned expansion
     rework of expansion priority
