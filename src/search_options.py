@@ -48,9 +48,22 @@ class SearchOptions:
         if "moves" in args:
             self.played_moves = args[args.index("moves") + 1:]
 
-    def set_search_parameters(self, _args: list[str]) -> None:
+    def set_search_parameters(self, args: list[str]) -> None:
         """ Parse arguments and set search parameters. """
         self.reset_search_parameters()
+
+        if "wtime" in args:
+            self.white_time = int(args[args.index("wtime") + 1])
+        if "winc" in args:
+            self.white_increment = int(args[args.index("winc") + 1])
+        if "btime" in args:
+            self.black_time = int(args[args.index("btime") + 1])
+        if "binc" in args:
+            self.black_increment = int(args[args.index("binc") + 1])
+        if "depth" in args:
+            self.depth = int(args[args.index("depth") + 1])
+        if "infinite" in args:
+            self.depth = Constants.INFINITE_DEPTH
 
     def reset_position(self) -> None:
         """ Reset position only, including played moves. """

@@ -26,7 +26,7 @@ class Engine:
         if self._check_stop():
             return
 
-        print(search_options)
+        print(search_options, flush=True)
         board: Board = self._get_current_board(search_options.fen, search_options.played_moves)
         move: Move = choice(list(board.legal_moves))
         print(f"bestmove {move.uci()}", flush=True)
@@ -39,5 +39,8 @@ class Engine:
         return command.stop or command.quit
 
     @staticmethod
-    def _get_current_board(fen: str, _played_moves: list[str]) -> Board:
-        return Board(fen)
+    def _get_current_board(fen: str, played_moves: list[str]) -> Board:
+        board = Board(fen)
+        for move in played_moves:
+            board.push_uci(move)
+        return board
