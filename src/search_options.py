@@ -1,3 +1,5 @@
+from chess import Board
+
 from constants import Constants
 
 
@@ -5,8 +7,8 @@ class SearchOptions:
     """
     Search options for engine.
 
-    fen: string representing board position
-    played moves: additional moves made from board position in fen
+    board: chess board representation
+    movetime: time for current move in milliseconds
     white_time: white's remaining time in milliseconds
     white_increment: increment for every move white makes
     black_time: black's time in milliseconds
@@ -14,19 +16,19 @@ class SearchOptions:
     depth: maximal allowed depth of calculation
     """
     def __init__(self) -> None:
-        self.fen: str = Constants.START_POSITION
-        self.played_moves: list[str] = []
+        self.board = Board()
 
-        self.white_time: int = 0
-        self.white_increment: int = 0
-        self.black_time: int = 0
-        self.black_increment: int = 0
-        self.depth: int = 0
+        self.movetime: int = 0  # [ms]
+        self.white_time: int = 0  # [ms]
+        self.white_increment: int = 0  # [ms]
+        self.black_time: int = 0  # [ms]
+        self.black_increment: int = 0  # [ms]
+        self.depth: float = Constants.INFINITE_DEPTH
 
     def __str__(self) -> str:
         return (f"SearchOptions(\n"
-                f"\tfen: {self.fen}\n"
-                f"\tplayed moves: {self.played_moves}\n"
+                f"\tboard: {self.board}\n"
+                f"\tmove time: {self.movetime}\n"
                 f"\twhite time: {self.white_time}\n"
                 f"\twhite increment: {self.white_increment}\n"
                 f"\tblack time: {self.black_time}\n"
@@ -36,22 +38,28 @@ class SearchOptions:
 
     def reset(self):
         """ Reset all options. """
-        self.reset_position()
+        self.board = Board()
         self.reset_search_parameters()
 
     def set_position(self, args: list[str]) -> None:
         """ Parse arguments and set position. """
-        self.reset_position()
-
+        self.board = Board()
         if args[0] == "fen":
-            self.fen = " ".join(args[1:args.index("moves")])
-        if "moves" in args:
-            self.played_moves = args[args.index("moves") + 1:]
+            self.board = Board(" ".join(args[1:args.index("moves")]))
+
+        for move in args[args.index("moves") + 1:]:
+            self.board.push_uci(move)
 
     def set_search_parameters(self, args: list[str]) -> None:
         """ Parse arguments and set search parameters. """
         self.reset_search_parameters()
 
+        # special case where 'go' is called with no arguments
+        if not args:
+            self.depth = Constants.DEFAULT_DEPTH
+            return
+
+        # parse possible 'go' arguments
         if "wtime" in args:
             self.white_time = int(args[args.index("wtime") + 1])
         if "winc" in args:
@@ -65,15 +73,33 @@ class SearchOptions:
         if "infinite" in args:
             self.depth = Constants.INFINITE_DEPTH
 
-    def reset_position(self) -> None:
-        """ Reset position only, including played moves. """
-        self.fen = Constants.START_POSITION
-        self.played_moves = []
-
     def reset_search_parameters(self) -> None:
         """ Reset search parameters only. """
+        self.movetime = 0
         self.white_time = 0
         self.white_increment = 0
         self.black_time = 0
         self.black_increment = 0
-        self.depth = 0
+        self.depth = Constants.INFINITE_DEPTH
+
+    @property
+    def time_options(self) -> dict[str, int]:
+        """
+        Return dictionary with time options as values and their UCI names as keys.
+        :return: time options with their UCI names.
+        """
+        return {
+            "movetime": self.movetime,
+            "wtime": self.white_time,
+            "winc": self.white_increment,
+            "btime": self.black_time,
+            "binc": self.black_increment
+        }
+
+    @property
+    def has_time_options(self) -> bool:
+        """
+        Information whether any time option is present.
+        :return:
+        """
+        return any(option != 0 for option in self.time_options.values())
