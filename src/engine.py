@@ -1,7 +1,6 @@
-from multiprocessing import Queue
+from multiprocessing import Event, Queue
 from random import choice
-from time import time
-from threading import Event, Timer
+from threading import Timer
 
 from chess import Board, Move
 
