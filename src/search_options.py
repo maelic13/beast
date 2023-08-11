@@ -60,6 +60,8 @@ class SearchOptions:
             return
 
         # parse possible 'go' arguments
+        if "movetime" in args:
+            self.movetime = int(args[args.index("movetime") + 1])
         if "wtime" in args:
             self.white_time = int(args[args.index("wtime") + 1])
         if "winc" in args:
