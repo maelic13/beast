@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from chess import Board
 
 from constants import Constants
+from heuristic import HeuristicType
 
 
 class SearchOptions:
@@ -8,6 +11,11 @@ class SearchOptions:
     Search options for engine.
 
     board: chess board representation
+    heuristic_type: what heuristic to use for evaluation
+        - classical
+        - legacy_neural_network
+        - neural_network
+
     movetime: time for current move in milliseconds
     white_time: white's remaining time in milliseconds
     white_increment: increment for every move white makes
@@ -25,6 +33,12 @@ class SearchOptions:
         self.black_increment: int = 0  # [ms]
         self.depth: float = Constants.INFINITE_DEPTH
 
+        self.fifty_moves_rule = True
+        self.heuristic_type = HeuristicType.CLASSICAL
+        self.model_file: Path | None = None
+        self.syzygy_path: Path | None = None
+        self.syzygy_probe_limit: int = 7
+
     def __str__(self) -> str:
         return (f"SearchOptions(\n"
                 f"\tboard: {self.board}\n"
@@ -34,16 +48,41 @@ class SearchOptions:
                 f"\tblack time: {self.black_time}\n"
                 f"\tblack increment: {self.black_increment}\n"
                 f"\tdepth: {self.depth}\n"
+                f"\tfifty moves rule: {self.fifty_moves_rule}\n"
+                f"\theuristic type: {self.heuristic_type}\n"
+                f"\tmodel file: {self.model_file}\n"
+                f"\tsyzygy path: {self.syzygy_path}\n"
+                f"\tsyzygy probe limit: {self.syzygy_probe_limit}\n"
                 f")\n")
 
+    @staticmethod
+    def get_uci_options() -> list[str]:
+        """
+        Available options to be set in uci string format.
+        :return: list of uci formatted options
+        """
+        return [
+            "option name fifty_moves_rule type check default true",
+            "option name heuristic type combo default classical "
+            "var classical var neural_network var legacy_neural_network var random",
+            "option name model_file type string default <empty>",
+            "option name syzygy_path type string default <empty>",
+            "option name syzygy_probe_limit type spin default 7 min 0 max 7",
+        ]
+
     def reset(self):
-        """ Reset all options. """
+        """ Reset search options and board. """
         self.board = Board()
-        self.reset_search_parameters()
+        self.reset_temporary_parameters()
 
     def set_position(self, args: list[str]) -> None:
         """ Parse arguments and set position. """
         self.board = Board()
+
+        if args[0] == "fen" and "moves" not in args:
+            self.board = Board(" ".join(args[1:]))
+            return
+
         if args[0] == "fen":
             self.board = Board(" ".join(args[1:args.index("moves")]))
 
@@ -52,7 +91,7 @@ class SearchOptions:
 
     def set_search_parameters(self, args: list[str]) -> None:
         """ Parse arguments and set search parameters. """
-        self.reset_search_parameters()
+        self.reset_temporary_parameters()
 
         # special case where 'go' is called with no arguments
         if not args:
@@ -75,14 +114,30 @@ class SearchOptions:
         if "infinite" in args:
             self.depth = Constants.INFINITE_DEPTH
 
-    def reset_search_parameters(self) -> None:
-        """ Reset search parameters only. """
-        self.movetime = 0
-        self.white_time = 0
-        self.white_increment = 0
-        self.black_time = 0
-        self.black_increment = 0
-        self.depth = Constants.INFINITE_DEPTH
+    def set_option(self, args: list[str]) -> None:
+        """
+        Set search option, not changed until specific action (no reset).
+        :param args: arguments of setoption command
+        """
+        option_name = args[1]
+        value = " ".join(args[3:]).lower()
+
+        match option_name:
+            case "fifty_moves_rule":
+                self.fifty_moves_rule = value == "true"
+            case "heuristic":
+                try:
+                    self.heuristic_type = HeuristicType.from_str(value)
+                except RuntimeError as err:
+                    print(err)
+            case "model_file":
+                path = Path(value.replace('\\', '/'))
+                self.model_file = path if path.exists() else None
+            case "syzygy_path":
+                path = Path(value.replace('\\', '/'))
+                self.syzygy_path = path if path.exists() else None
+            case "syzygy_probe_limit":
+                self.syzygy_probe_limit = int(value)
 
     @property
     def time_options(self) -> dict[str, int]:
@@ -100,8 +155,14 @@ class SearchOptions:
 
     @property
     def has_time_options(self) -> bool:
-        """
-        Information whether any time option is present.
-        :return:
-        """
+        """ Information whether any time option is present. """
         return any(option != 0 for option in self.time_options.values())
+
+    def reset_temporary_parameters(self) -> None:
+        """ Reset temporary parameters only. """
+        self.movetime = 0
+        self.white_time = 0
+        self.white_increment = 0
+        self.black_time = 0
+        self.black_increment = 0
+        self.depth = Constants.INFINITE_DEPTH

@@ -3,11 +3,13 @@ from random import choice
 from threading import Timer
 from time import time
 
-from chess import Board, Move
+from chess import Board, Move, PAWN
 
 from constants import Constants
 from engine_command import EngineCommand
-from heuristic import ClassicalHeuristic, PieceValues
+from heuristic import (
+    ClassicalHeuristic, Heuristic, HeuristicType, LegacyNeuralNetwork, NeuralNetwork, PieceValues,
+    RandomHeuristic)
 from search_options import SearchOptions
 
 
@@ -31,7 +33,7 @@ class Engine:
             elif command.stop:
                 continue
 
-            self._initialize_heuristic(command.search_options)
+            self._heuristic = self._choose_heuristic(command.search_options)
             self._start_timer(command.search_options)
             self._search(command.search_options.board, command.search_options.depth)
 
@@ -40,7 +42,7 @@ class Engine:
         Check if stop conditions were met:
             time for calculation is used up
             stop or quit commands received
-        :return: stop calculation
+        :raise RuntimeError: stop calculation
         """
         if self._timeout.is_set():
             raise RuntimeError("Time-out.")
@@ -52,12 +54,42 @@ class Engine:
         if command.stop or command.quit:
             raise RuntimeError(f"Command: stop - {command.stop}, quit - {command.quit}")
 
-    def _initialize_heuristic(self, search_options: SearchOptions) -> None:
+    @staticmethod
+    def _choose_heuristic(search_options: SearchOptions) -> Heuristic:
         """
         Initialize heuristic function based on search parameters.
         :param search_options: search parameters
         """
-        self._heuristic = ClassicalHeuristic(search_options)
+        classical_heuristic = ClassicalHeuristic(
+            fifty_moves_rule=search_options.fifty_moves_rule,
+            syzygy_path=search_options.syzygy_path,
+            syzygy_probe_limit=search_options.syzygy_probe_limit)
+
+        if search_options.heuristic_type == HeuristicType.CLASSICAL:
+            return classical_heuristic
+
+        if search_options.heuristic_type == HeuristicType.RANDOM:
+            search_options.depth = 1
+            return RandomHeuristic()
+
+        if search_options.model_file is None or not search_options.model_file.exists():
+            return classical_heuristic
+
+        if search_options.heuristic_type == HeuristicType.NEURAL_NETWORK:
+            return NeuralNetwork(
+                model_file=search_options.model_file,
+                fifty_moves_rule=search_options.fifty_moves_rule,
+                syzygy_path=search_options.syzygy_path,
+                syzygy_probe_limit=search_options.syzygy_probe_limit)
+
+        if search_options.heuristic_type == HeuristicType.LEGACY_NEURAL_NETWORK:
+            return LegacyNeuralNetwork(
+                model_file=search_options.model_file,
+                fifty_moves_rule=search_options.fifty_moves_rule,
+                syzygy_path=search_options.syzygy_path,
+                syzygy_probe_limit=search_options.syzygy_probe_limit)
+
+        return classical_heuristic
 
     def _start_timer(self, search_options: SearchOptions) -> None:
         """
@@ -125,10 +157,10 @@ class Engine:
         self._check_stop()
         self._nodes_searched += 1
 
-        if board.is_game_over() or not self._heuristic.use_quiescence():
+        if board.is_game_over() or depth == 0 and not self._heuristic.use_quiescence():
             return self._heuristic.evaluate(board), []
-        if depth == 0:
-            return self._quiescence(board, -beta, -alpha), []
+        if depth == 0 and self._heuristic.use_quiescence():
+            return self._quiescence(board, alpha, beta), []
 
         best_moves: list[Move] = []
         for move in board.legal_moves:
@@ -175,8 +207,10 @@ class Engine:
         # expansion and search
         for move in self._get_captures_and_checks(board):
             if use_delta_pruning and board.is_capture(move):
-                value = PieceValues.as_dict().get(board.piece_type_at(move.to_square)) + 200
-                if evaluation + value < alpha:
+                captured_piece = (
+                    PAWN if board.is_en_passant(move) else board.piece_type_at(move.to_square))
+                piece_value = PieceValues.as_dict().get(captured_piece) + 200
+                if evaluation + piece_value < alpha:
                     continue
 
             board.push(move)

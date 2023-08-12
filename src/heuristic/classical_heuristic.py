@@ -1,5 +1,4 @@
 from chess import BISHOP, Board, BLACK, KNIGHT, QUEEN, PAWN, ROOK, SquareSet, WHITE
-from chess.syzygy import open_tablebase
 
 from .heuristic import Heuristic
 from .piece_values import PieceValues
@@ -35,36 +34,7 @@ class ClassicalHeuristic(Heuristic):
         """
         return True
 
-    def evaluate(self, board: Board) -> float:
-        """
-        Evaluate board and return value in centi-pawns.
-        :param board: chess board representation
-        :return: board evaluation
-        """
-        if board.is_game_over():
-            if board.is_checkmate():
-                return -25500.
-            return 0.
-
-        if self._fifty_moves_rule and board.can_claim_fifty_moves():
-            return 0.
-
-        # tablebase probing
-        evaluation = 0
-        if len(board.piece_map()) <= self._syzygy_probe_limit and self._syzygy_path is not None:
-            with open_tablebase(self._syzygy_path) as tablebase:
-                wdl = tablebase.get_wdl(board)
-
-            if self._fifty_moves_rule and wdl == 2 or not self._fifty_moves_rule and wdl == 1:
-                evaluation = 12800
-            elif self._fifty_moves_rule and wdl == -2 or not self._fifty_moves_rule and wdl == -1:
-                evaluation = -12800
-            else:
-                return 0.
-
-        return evaluation + self.classical_evaluation(board)
-
-    def classical_evaluation(self, board: Board) -> float:
+    def _evaluate_internal(self, board: Board) -> float:
         """
         Classical style heuristic function based on piece values and derived from human knowledge.
         :param board: board representation

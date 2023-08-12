@@ -4,7 +4,7 @@ UCI compatible chess engine with neural network support
 - 50-moves rule, 3-fold repetition
 - infinite analysis mode
 - time management
-- 3 types of heuristic (classic, neural network, random play)
+- 4 types of heuristic (classic, neural network, legacy neural network, random play)
 - syzygy tablebases support
 
 # How to run
@@ -20,7 +20,7 @@ Install python virtual environment via **venv.cmd** file.
 ## EXE
 You can compile yourself from https://github.com/maelic13/BeastExe
 
-Tested and working for Hiarcs Chess Explorer and Arena. Currently not working with Chessbase and Fritz! For other GUIs, you have to test for yourself.
+Tested and working for Hiarcs Chess Explorer and Arena. For other GUIs, you have to test for yourself.
 
 The exe must be placed in beast repo, expecting following relative paths to exist
 - ./venv/scripts/python.exe

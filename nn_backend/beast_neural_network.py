@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from multiprocessing import cpu_count, Pool
+from pathlib import Path
 from time import time
 
 from chess import BISHOP, Board, KING, KNIGHT, PAWN, QUEEN, ROOK
@@ -15,7 +16,7 @@ from tensorflow.keras.metrics import BinaryAccuracy
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 
-from pgn_convert import DataHelper
+from .pgn_convert import DataHelper
 
 
 class BeastNeuralNetwork:
@@ -50,7 +51,7 @@ class BeastNeuralNetwork:
             callbacks=[EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=8)]
         )
 
-    def load_model(self, path: str) -> None:
+    def load_model(self, path: Path | str) -> None:
         """
         Load already trained model from file.
         :param path: path to model file

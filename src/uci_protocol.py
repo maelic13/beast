@@ -32,11 +32,12 @@ class UciProtocol:
                     break
                 case _: continue
 
-    @staticmethod
-    def uci() -> None:
+    def uci(self) -> None:
         """ Report information about the engine and available uci options. """
         print(f"id name {Constants.ENGINE_NAME} {Constants.ENGINE_VERSION}")
         print(f"id author {Constants.AUTHOR}")
+        for option in self._search_options.get_uci_options():
+            print(option)
         print("uciok")
 
     @staticmethod
@@ -52,15 +53,15 @@ class UciProtocol:
         """ Send go command to the engine with search parameters. """
         self._search_options.set_search_parameters(args)
         self._queue.put(EngineCommand(search_options=deepcopy(self._search_options)))
+        self._search_options.reset_temporary_parameters()
 
     def stop(self) -> None:
         """ Stop engine calculation by stop command. """
         self._queue.put(EngineCommand(engine_stop=True))
 
-    @staticmethod
-    def setoption(_args: list[str]) -> None:
+    def setoption(self, args: list[str]) -> None:
         """ Set engine option. """
-        print("No engine options currently supported.")
+        self._search_options.set_option(args)
 
     def ucinewgame(self):
         """ Reset search options for new game. """
