@@ -161,7 +161,6 @@ class Engine:
 
         # heuristic
         evaluation = self._heuristic.evaluate(board)
-        self._nodes_searched += 1
 
         if evaluation >= beta:
             return beta
@@ -183,6 +182,7 @@ class Engine:
             board.push(move)
             score = -self._quiescence(board, -beta, -alpha)
             board.pop()
+            self._nodes_searched += 1
 
             if score >= beta:
                 return beta

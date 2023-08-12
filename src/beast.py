@@ -6,7 +6,7 @@ from engine import Engine
 from uci_protocol import UciProtocol
 
 
-if __name__ == "__main__":
+def main() -> None:
     print(f"{Constants.ENGINE_NAME} {Constants.ENGINE_VERSION} by {Constants.AUTHOR}")
 
     queue = Queue()
@@ -14,3 +14,7 @@ if __name__ == "__main__":
     sleep(0.1)  # wait for process to start
 
     UciProtocol(queue).uci_loop()
+
+
+if __name__ == "__main__":
+    main()
