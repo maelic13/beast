@@ -5,9 +5,9 @@ from time import time
 
 from chess import Board, Move
 
-from classical_heuristic import ClassicalHeuristic
 from constants import Constants
 from engine_command import EngineCommand
+from heuristic import ClassicalHeuristic, PieceValues
 from search_options import SearchOptions
 
 
@@ -123,10 +123,12 @@ class Engine:
         :return: evaluation, best move continuation from given position
         """
         self._check_stop()
-
         self._nodes_searched += 1
-        if depth == 0 or board.is_game_over():
+
+        if board.is_game_over() or not self._heuristic.use_quiescence():
             return self._heuristic.evaluate(board), []
+        if depth == 0:
+            return self._quiescence(board, -beta, -alpha), []
 
         best_moves: list[Move] = []
         for move in board.legal_moves:
@@ -144,3 +146,58 @@ class Engine:
                 best_moves = moves
 
         return alpha, best_moves
+
+    def _quiescence(self, board: Board, alpha: float, beta: float) -> float:
+        """
+        Quiescence search checks all possible captures and checks to ensure not returning
+        evaluation of position in-between captures or lost after simple check.
+        :param board: chess board representation
+        :param alpha: search parameter alpha
+        :param beta: search parameter beta
+        :return: evaluation
+        """
+        self._check_stop()
+        use_delta_pruning = len(board.piece_map()) > 8
+
+        # heuristic
+        evaluation = self._heuristic.evaluate(board)
+        self._nodes_searched += 1
+
+        if evaluation >= beta:
+            return beta
+
+        if use_delta_pruning:
+            if evaluation < alpha - 1000:
+                return alpha
+
+        if evaluation > alpha:
+            alpha = evaluation
+
+        # expansion and search
+        for move in self._get_captures_and_checks(board):
+            if use_delta_pruning and board.is_capture(move):
+                value = PieceValues.as_dict().get(board.piece_type_at(move.to_square)) + 200
+                if evaluation + value < alpha:
+                    continue
+
+            board.push(move)
+            score = -self._quiescence(board, -beta, -alpha)
+            board.pop()
+
+            if score >= beta:
+                return beta
+            if score > alpha:
+                alpha = score
+
+        return alpha
+
+    @staticmethod
+    def _get_captures_and_checks(board: Board) -> list[Move]:
+        """
+        Check for captures and checks for quiescence search.
+        :param board: chess board representation
+        :return: all moves that either capture a piece, or give check from current position
+        """
+        # TODO: move ordering to get best results
+        return [move for move in board.legal_moves
+                if board.is_capture(move) or board.gives_check(move)]

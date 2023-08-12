@@ -8,4 +8,4 @@ class Constants:
     DEFAULT_DEPTH: float = 2
     INFINITE_DEPTH = float('inf')
     START_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    TIME_FLEX = 10
+    TIME_FLEX = 10  # [ms]

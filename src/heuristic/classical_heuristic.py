@@ -1,19 +1,11 @@
-from math import log10
-
 from chess import BISHOP, Board, BLACK, KNIGHT, QUEEN, PAWN, ROOK, SquareSet, WHITE
 from chess.syzygy import open_tablebase
 
-from search_options import SearchOptions
+from .heuristic import Heuristic
+from .piece_values import PieceValues
 
 
-class ClassicalHeuristic:
-    # Piece values
-    PAWN_VALUE = 100
-    KNIGHT_VALUE = 350
-    BISHOP_VALUE = 350
-    ROOK_VALUE = 525
-    QUEEN_VALUE = 1000
-
+class ClassicalHeuristic(Heuristic):
     # Parameter weights for bonus eval
     PAWN_RANK_WEIGHT = 7
     PAWN_FILE_WEIGHT = 5
@@ -35,34 +27,19 @@ class ClassicalHeuristic:
     KING_CENTER_WEIGHT = 8
     KING_DISTANCE_WEIGHT = 5
 
-    def __init__(self, _options: SearchOptions) -> None:
-        self._fifty_moves_rule = True
-        self._syzygy_path: str | None = None
-        self._syzygy_probe_limit = 7
-
     @staticmethod
-    def pawn_advantage_to_win_probability(pawn_advantage: float) -> float:
+    def use_quiescence() -> bool:
         """
-        Calculate winning probability given pawn advantage.
-        :param pawn_advantage: advantage in pawns
-        :return: winning probability
+        Whether to use quiescence search with this heuristic.
+        :return: use quiescence or not
         """
-        return 1 / (1 + 10 ** (-pawn_advantage / 4))
-
-    @staticmethod
-    def win_probability_to_pawn_advantage(win_probability: float) -> float:
-        """
-        Calculate pawn advantage given winning probability.
-        :param win_probability: win probability (0.0 to 1.0)
-        :return: advantage in pawns
-        """
-        return 4 * log10(win_probability / (1 - win_probability))
+        return True
 
     def evaluate(self, board: Board) -> float:
         """
-        Evaluate board position.
+        Evaluate board and return value in centi-pawns.
         :param board: chess board representation
-        :return: win probability (0.0 to 1.0)
+        :return: board evaluation
         """
         if board.is_game_over():
             if board.is_checkmate():
@@ -82,7 +59,8 @@ class ClassicalHeuristic:
                 evaluation = 12800
             elif self._fifty_moves_rule and wdl == -2 or not self._fifty_moves_rule and wdl == -1:
                 evaluation = -12800
-            return 0.
+            else:
+                return 0.
 
         return evaluation + self.classical_evaluation(board)
 
@@ -110,11 +88,13 @@ class ClassicalHeuristic:
         b_king = board.king(BLACK)
 
         # Initial eval - adding value of pieces on board
-        evaluation = (len(w_pawns) * self.PAWN_VALUE - len(b_pawns) * self.PAWN_VALUE
-                      + len(w_knights) * self.KNIGHT_VALUE - len(b_knights) * self.KNIGHT_VALUE
-                      + len(w_bishops) * self.BISHOP_VALUE - len(b_bishops) * self.BISHOP_VALUE
-                      + len(w_rooks) * self.ROOK_VALUE - len(b_rooks) * self.ROOK_VALUE
-                      + len(w_queens) * self.QUEEN_VALUE - len(b_queens) * self.QUEEN_VALUE)
+        evaluation = (
+            len(w_pawns) * PieceValues.PAWN_VALUE - len(b_pawns) * PieceValues.PAWN_VALUE
+            + len(w_knights) * PieceValues.KNIGHT_VALUE - len(b_knights) * PieceValues.KNIGHT_VALUE
+            + len(w_bishops) * PieceValues.BISHOP_VALUE - len(b_bishops) * PieceValues.BISHOP_VALUE
+            + len(w_rooks) * PieceValues.ROOK_VALUE - len(b_rooks) * PieceValues.ROOK_VALUE
+            + len(w_queens) * PieceValues.QUEEN_VALUE - len(b_queens) * PieceValues.QUEEN_VALUE
+        )
 
         # Pawns
         wp_bonus = self._pawn_bonus(w_pawns, b_king, True)

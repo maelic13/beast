@@ -37,7 +37,7 @@ class UciProtocol:
         """ Report information about the engine and available uci options. """
         print(f"id name {Constants.ENGINE_NAME} {Constants.ENGINE_VERSION}")
         print(f"id author {Constants.AUTHOR}")
-        print(f"uciok")
+        print("uciok")
 
     @staticmethod
     def isready() -> None:
