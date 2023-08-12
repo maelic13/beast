@@ -62,12 +62,12 @@ class SearchOptions:
         :return: list of uci formatted options
         """
         return [
-            "option name fifty_moves_rule type check default true",
-            "option name heuristic type combo default classical "
+            "option name Heuristic type combo default classical "
             "var classical var neural_network var legacy_neural_network var random",
-            "option name model_file type string default <empty>",
-            "option name syzygy_path type string default <empty>",
-            "option name syzygy_probe_limit type spin default 7 min 0 max 7",
+            "option name ModelFile type string default <empty>",
+            "option name Syzygy50MoveRule type check default true",
+            "option name SyzygyPath type string default <empty>",
+            "option name SyzygyProbeLimit type spin default 7 min 0 max 7",
         ]
 
     def reset(self):
@@ -81,6 +81,8 @@ class SearchOptions:
 
         if args[0] == "fen" and "moves" not in args:
             self.board = Board(" ".join(args[1:]))
+            return
+        elif "moves" not in args:
             return
 
         if args[0] == "fen":
@@ -119,24 +121,24 @@ class SearchOptions:
         Set search option, not changed until specific action (no reset).
         :param args: arguments of setoption command
         """
-        option_name = args[1]
+        option_name = args[1].lower()
         value = " ".join(args[3:]).lower()
 
         match option_name:
-            case "fifty_moves_rule":
+            case "syzygy50moverule":
                 self.fifty_moves_rule = value == "true"
             case "heuristic":
                 try:
                     self.heuristic_type = HeuristicType.from_str(value)
                 except RuntimeError as err:
                     print(err)
-            case "model_file":
+            case "modelfile":
                 path = Path(value.replace('\\', '/'))
                 self.model_file = path if path.exists() else None
-            case "syzygy_path":
+            case "syzygypath":
                 path = Path(value.replace('\\', '/'))
                 self.syzygy_path = path if path.exists() else None
-            case "syzygy_probe_limit":
+            case "syzygyprobelimit":
                 self.syzygy_probe_limit = int(value)
 
     @property
