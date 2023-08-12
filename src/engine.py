@@ -16,7 +16,6 @@ class Engine:
         self._heuristic = None
         self._nodes_searched = 0
         self._queue = queue
-        self._stop = False
         self._timeout: Event = Event()
 
     def start(self) -> None:
@@ -36,7 +35,7 @@ class Engine:
             self._start_timer(command.search_options)
             self._search(command.search_options.board, command.search_options.depth)
 
-    def _check_stop(self) -> bool:
+    def _check_stop(self) -> None:
         """
         Check if stop conditions were met:
             time for calculation is used up
@@ -44,15 +43,14 @@ class Engine:
         :return: stop calculation
         """
         if self._timeout.is_set():
-            self._stop = True
-            return self._stop
+            raise RuntimeError("Time-out.")
 
         if self._queue.empty():
-            return self._stop
+            return
 
         command = self._queue.get_nowait()
-        self._stop = command.stop or command.quit
-        return self._stop
+        if command.stop or command.quit:
+            raise RuntimeError(f"Command: stop - {command.stop}, quit - {command.quit}")
 
     def _initialize_heuristic(self, search_options: SearchOptions) -> None:
         """
@@ -94,26 +92,25 @@ class Engine:
         :param max_depth: limit for depth of iterative search
         """
         # start with random move choice, to be used in case of timeout before first depth is reached
-        best_moves: list[Move] = [choice(list(board.legal_moves))]
+        moves: list[Move] = [choice(list(board.legal_moves))]
         depth = 0
         search_started = time() - 0.0001
         self._nodes_searched = 0
-        self._stop = False
 
-        while depth < max_depth and not self._check_stop():
+        while depth < max_depth:
             depth += 1
-            evaluation, moves = self._negamax(board, depth, float('-inf'), float('inf'))
-            if self._stop:
-                continue
+            try:
+                evaluation, moves = self._negamax(board, depth, float('-inf'), float('inf'))
+            except RuntimeError:
+                break
 
-            best_moves = moves
             current_time = time() - search_started
             print(f"info depth {depth} score cp {evaluation} "
                   f"nodes {self._nodes_searched} nps {int(self._nodes_searched / current_time)} "
                   f"time {round(1000 * current_time)} "
-                  f"pv {' '.join([move.uci() for move in best_moves])}", flush=True)
+                  f"pv {' '.join([move.uci() for move in moves])}", flush=True)
 
-        print(f"bestmove {best_moves[0].uci()}", flush=True)
+        print(f"bestmove {moves[0].uci()}", flush=True)
 
     def _negamax(self, board: Board, depth: float, alpha: float, beta: float
                  ) -> tuple[float, list[Move]]:
@@ -125,8 +122,7 @@ class Engine:
         :param beta: search parameter beta
         :return: evaluation, best move continuation from given position
         """
-        if self._check_stop():
-            return 0., []
+        self._check_stop()
 
         self._nodes_searched += 1
         if depth == 0 or board.is_game_over():
