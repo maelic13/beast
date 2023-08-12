@@ -14,6 +14,13 @@ Beast can be run
 
 The exe file can be connected to your preferred GUI, communicating via UCI protocol, but has to be compiled from C# code.
 
+For ease of use, the default version of Beast in master branch is non-neural network version to save you from installing tensorflow.
+Should you wish to try neural network version, or train your own network, check out **nn_beast** branch. It will be kept up-to-date with
+master.
+
+For non-neural network Beast, you can use any up-to-date python 3 version. For neural network Beast, you will need tensorflow
+and install its currently supported version of python.
+
 ## Prerequisites
 Install python virtual environment via **venv.cmd** file.
 

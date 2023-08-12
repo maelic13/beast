@@ -7,9 +7,7 @@ from chess import Board, Move, PAWN
 
 from constants import Constants
 from engine_command import EngineCommand
-from heuristic import (
-    ClassicalHeuristic, Heuristic, HeuristicType, LegacyNeuralNetwork, NeuralNetwork, PieceValues,
-    RandomHeuristic)
+from heuristic import ClassicalHeuristic, Heuristic, HeuristicType, PieceValues, RandomHeuristic
 from search_options import SearchOptions
 
 
@@ -71,23 +69,6 @@ class Engine:
         if search_options.heuristic_type == HeuristicType.RANDOM:
             search_options.depth = 1
             return RandomHeuristic()
-
-        if search_options.model_file is None or not search_options.model_file.exists():
-            return classical_heuristic
-
-        if search_options.heuristic_type == HeuristicType.NEURAL_NETWORK:
-            return NeuralNetwork(
-                model_file=search_options.model_file,
-                fifty_moves_rule=search_options.fifty_moves_rule,
-                syzygy_path=search_options.syzygy_path,
-                syzygy_probe_limit=search_options.syzygy_probe_limit)
-
-        if search_options.heuristic_type == HeuristicType.LEGACY_NEURAL_NETWORK:
-            return LegacyNeuralNetwork(
-                model_file=search_options.model_file,
-                fifty_moves_rule=search_options.fifty_moves_rule,
-                syzygy_path=search_options.syzygy_path,
-                syzygy_probe_limit=search_options.syzygy_probe_limit)
 
         return classical_heuristic
 

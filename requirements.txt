@@ -1,6 +1,1 @@
-keras
-numpy
 python-chess
-scikit-learn
-tensorflow
-tqdm

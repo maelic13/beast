@@ -35,7 +35,6 @@ class SearchOptions:
 
         self.fifty_moves_rule = True
         self.heuristic_type = HeuristicType.CLASSICAL
-        self.model_file: Path | None = None
         self.syzygy_path: Path | None = None
         self.syzygy_probe_limit: int = 7
 
@@ -50,7 +49,6 @@ class SearchOptions:
                 f"\tdepth: {self.depth}\n"
                 f"\tfifty moves rule: {self.fifty_moves_rule}\n"
                 f"\theuristic type: {self.heuristic_type}\n"
-                f"\tmodel file: {self.model_file}\n"
                 f"\tsyzygy path: {self.syzygy_path}\n"
                 f"\tsyzygy probe limit: {self.syzygy_probe_limit}\n"
                 f")\n")
@@ -62,9 +60,7 @@ class SearchOptions:
         :return: list of uci formatted options
         """
         return [
-            "option name Heuristic type combo default classical "
-            "var classical var neural_network var legacy_neural_network var random",
-            "option name ModelFile type string default <empty>",
+            "option name Heuristic type combo default classical var classical var random",
             "option name Syzygy50MoveRule type check default true",
             "option name SyzygyPath type string default <empty>",
             "option name SyzygyProbeLimit type spin default 7 min 0 max 7",
@@ -125,21 +121,18 @@ class SearchOptions:
         value = " ".join(args[3:]).lower()
 
         match option_name:
-            case "syzygy50moverule":
-                self.fifty_moves_rule = value == "true"
             case "heuristic":
                 try:
                     self.heuristic_type = HeuristicType.from_str(value)
                 except RuntimeError as err:
                     print(err)
-            case "modelfile":
-                path = Path(value.replace('\\', '/'))
-                self.model_file = path if path.exists() else None
             case "syzygypath":
                 path = Path(value.replace('\\', '/'))
                 self.syzygy_path = path if path.exists() else None
             case "syzygyprobelimit":
                 self.syzygy_probe_limit = int(value)
+            case "syzygy50moverule":
+                self.fifty_moves_rule = value == "true"
 
     @property
     def time_options(self) -> dict[str, int]:

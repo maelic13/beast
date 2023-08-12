@@ -6,8 +6,6 @@ class HeuristicType(Enum):
     Supported heuristic types.
     """
     CLASSICAL = "classical"
-    LEGACY_NEURAL_NETWORK = "legacy_neural_network"
-    NEURAL_NETWORK = "neural_network"
     RANDOM = "random"
 
     @staticmethod
@@ -20,10 +18,6 @@ class HeuristicType(Enum):
         match string:
             case "classical":
                 return HeuristicType.CLASSICAL
-            case "legacy_neural_network":
-                return HeuristicType.LEGACY_NEURAL_NETWORK
-            case "neural_network":
-                return HeuristicType.NEURAL_NETWORK
             case "random":
                 return HeuristicType.RANDOM
         raise RuntimeError("Invalid heuristic type identifier!")
