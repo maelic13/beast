@@ -1,3 +1,9 @@
+v2.0
+    + complete re-write of engine
+    + support for new mode structure
+    + support for the best legacy model structure
+    + 100% speed-up
+
 v1.5
     + 25% speed-up for classical evaluation
     + complete typing to the engine
