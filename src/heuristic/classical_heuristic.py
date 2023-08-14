@@ -236,9 +236,11 @@ class ClassicalHeuristic(Heuristic):
         :param bonus: bonus value for piece type
         :return: evaluation bonus
         """
-        if (int(piece_position / 8) in range(3, 5) and piece_position % 8 in range(3, 5)
-                or int(piece_position / 8) in range(2, 6) and piece_position % 8 in range(2, 6)
-                or int(piece_position / 8) in range(1, 7) and piece_position % 8 in range(1, 7)):
+        if int(piece_position / 8) in range(3, 5) and piece_position % 8 in range(3, 5):
+            return 3 * bonus
+        if int(piece_position / 8) in range(2, 6) and piece_position % 8 in range(2, 6):
+            return 2 * bonus
+        if int(piece_position / 8) in range(1, 7) and piece_position % 8 in range(1, 7):
             return bonus
         return 0
 

@@ -170,7 +170,6 @@ class Engine:
         :return: evaluation
         """
         self._check_stop()
-        use_delta_pruning = len(board.piece_map()) > 8
 
         # heuristic
         evaluation = self._heuristic.evaluate(board)
@@ -178,6 +177,7 @@ class Engine:
         if evaluation >= beta:
             return beta
 
+        use_delta_pruning = len(board.piece_map()) > 8
         if use_delta_pruning:
             if evaluation < alpha - 1000:
                 return alpha
