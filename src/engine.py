@@ -13,10 +13,10 @@ from search_options import SearchOptions
 
 class Engine:
     def __init__(self, queue: Queue) -> None:
-        self._heuristic = None
+        self._heuristic: Heuristic | None = None
         self._nodes_searched = 0
         self._queue = queue
-        self._timeout: Event = Event()
+        self._timeout = Event()
 
     def start(self) -> None:
         """
