@@ -21,16 +21,16 @@ class UciProtocol:
 
             match command:
                 case "uci": self.uci(),
-                case "isready": self.isready(),
+                case "isready": self.is_ready(),
                 case "go": self.go(args),
                 case "stop": self.stop(),
-                case "setoption": self.setoption(args),
-                case "ucinewgame": self.ucinewgame(),
+                case "setoption": self.set_option(args),
+                case "ucinewgame": self.new_game(),
                 case "position": self.position(args),
                 case "quit":
                     self.quit()
                     break
-                case _: continue
+                case _: self.invalid_command(command),
 
     def uci(self) -> None:
         """ Report information about the engine and available uci options. """
@@ -41,7 +41,7 @@ class UciProtocol:
         print("uciok")
 
     @staticmethod
-    def isready() -> None:
+    def is_ready() -> None:
         """ Report engine readiness. """
         print("readyok")
 
@@ -59,14 +59,19 @@ class UciProtocol:
         """ Stop engine calculation by stop command. """
         self._queue.put(EngineCommand(engine_stop=True))
 
-    def setoption(self, args: list[str]) -> None:
+    def set_option(self, args: list[str]) -> None:
         """ Set engine option. """
         self._search_options.set_option(args)
 
-    def ucinewgame(self):
+    def new_game(self):
         """ Reset search options for new game. """
         self._search_options.reset()
 
     def position(self, args: list[str]) -> None:
         """ Set new position to search options. """
         self._search_options.set_position(args)
+
+    @staticmethod
+    def invalid_command(command: str) -> None:
+        """ Inform about invalid command. """
+        print(f"Invalid command: {command}")
