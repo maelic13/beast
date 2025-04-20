@@ -12,23 +12,18 @@ Beast can be run
 - from python console via src/beast.py
 - using exe runner file
 
-The exe file can be connected to your preferred GUI, communicating via UCI protocol, but has to be compiled from C# code.
-
-For ease of use, the default version of Beast in master branch is non-neural network version to save you from installing tensorflow.
-Should you wish to try neural network version, or train your own network, check out **nn_beast** branch. It will be kept up-to-date with
-master.
-
-For non-neural network Beast, you can use any up-to-date python 3 version. For neural network Beast, you will need tensorflow
-and install its currently supported version of python.
+The exe runner can be connected to your preferred GUI, communicating via UCI protocol, 
+but has to be compiled from C#, C++ or Rust code.
 
 ## Prerequisites
-Install python virtual environment via **venv.cmd** file.
+Install python virtual environment via **install/install.ps1** file. Use help argument
+to see options if you need dev environment.
 
 ## EXE
-You can compile yourself from https://github.com/maelic13/BeastExe
+You can compile yourself from exe\{language} sub-projects.
 
-Tested and working for Hiarcs Chess Explorer and Arena. For other GUIs, you have to test for yourself.
+Tested and working for Hiarcs Chess Explorer and Arena. Other GUIs likely work but not tested.
 
-The exe must be placed in beast repo, expecting following relative paths to exist
+The exe must be placed in beast repo (root), expecting following relative paths to exist
 - ./venv/scripts/python.exe
 - ./src/beast.py
