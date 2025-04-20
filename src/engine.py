@@ -68,7 +68,7 @@ class Engine:
     @staticmethod
     def _choose_heuristic(search_options: SearchOptions) -> Heuristic:
         """
-        Initialize heuristic function based on search parameters.
+        Initialize a heuristic function based on search parameters.
         :param search_options: search parameters
         """
         classical_heuristic = ClassicalHeuristic(
@@ -84,8 +84,8 @@ class Engine:
             search_options.depth = 1
             return RandomHeuristic()
 
-        if search_options.model_file is None or not search_options.model_file.exists():
-            return classical_heuristic
+        if search_options.model_file is None:
+            raise RuntimeError(f"Warning: incorrect model file.")
 
         if search_options.heuristic_type == HeuristicType.NEURAL_NETWORK:
             return NeuralNetwork(
@@ -107,16 +107,16 @@ class Engine:
 
     def _start_timer(self, search_options: SearchOptions) -> None:
         """
-        Check search options and start timer if there is limited time for best move search.
+        Check search options and start the timer if there is limited time for the best move search.
         :param search_options: search parameters
         """
         self._timeout.clear()
 
         if not search_options.has_time_options:
-            # do not start timer
+            # do not start the timer
             return
 
-        time_for_move: int | None = None
+        time_for_move: float | None = None
         if search_options.movetime != 0:
             time_for_move = (search_options.movetime - Constants.TIME_FLEX) / 1000.0
         if search_options.board.turn and search_options.white_time != 0:
@@ -133,11 +133,12 @@ class Engine:
 
     def _search(self, board: Board, max_depth: float) -> None:
         """
-        Search for best move and report info to stdout.
+        Search for the best move and report info to stdout.
         :param board: current board representation
         :param max_depth: limit for depth of iterative search
         """
-        # start with random move choice, to be used in case of timeout before first depth is reached
+        # start with a random move choice, to be used in case of timeout before
+        # the first depth is reached
         moves: list[Move] = [choice(list(board.legal_moves))]
         depth = 0
         search_started = time() - 0.0001

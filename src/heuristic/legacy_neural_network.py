@@ -42,8 +42,9 @@ class LegacyNeuralNetwork(Heuristic):
         :param board: chess board representation
         :return: board evaluation
         """
-        input_tensor = np.array([self._fen_to_input(board.fen())], dtype=np.float32)
-        output = self._session.run(None, {self._session.get_inputs()[0].name: input_tensor})
+        output = self._session.run(
+            None, {self._session.get_inputs()[0].name: [self._fen_to_input(board.fen())]}
+        )
         return round(output[0][0][0] * 2000)
 
     @staticmethod
@@ -54,13 +55,13 @@ class LegacyNeuralNetwork(Heuristic):
         :return: input for neural network
         """
         fen = fen.split(" ")
-        inp = np.zeros((7, 8, 8), dtype=int)
+        inp = np.zeros((7, 8, 8), dtype=np.float32)
 
         # plane who's to move
         if fen[1] == "w":
-            inp[6,] = np.ones((8, 8), dtype=int)
+            inp[6,] = np.ones((8, 8), dtype=np.float32)
         else:
-            inp[6,] = -np.ones((8, 8), dtype=int)
+            inp[6,] = -np.ones((8, 8), dtype=np.float32)
 
         # parse board
         fen = fen[0].split("/")
