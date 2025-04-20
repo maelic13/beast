@@ -1,11 +1,14 @@
 # folders
 .idea/
+.venv/
+.venv_dev/
+bin/
 build/
-venv/
+cmake*/
+obj/
 
 # files
 *.exe
 *.h5
 *.pgn
 *.pyc
-*.txt

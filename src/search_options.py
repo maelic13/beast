@@ -23,6 +23,7 @@ class SearchOptions:
     black_increment: increment for every move black makes
     depth: maximal allowed depth of calculation
     """
+
     def __init__(self) -> None:
         self.board = Board()
 
@@ -35,23 +36,27 @@ class SearchOptions:
 
         self.fifty_moves_rule = True
         self.heuristic_type = HeuristicType.CLASSICAL
+        self.model_file: Path | None = None
         self.syzygy_path: Path | None = None
         self.syzygy_probe_limit: int = 7
 
     def __str__(self) -> str:
-        return (f"SearchOptions(\n"
-                f"\tboard: {self.board}\n"
-                f"\tmove time: {self.movetime}\n"
-                f"\twhite time: {self.white_time}\n"
-                f"\twhite increment: {self.white_increment}\n"
-                f"\tblack time: {self.black_time}\n"
-                f"\tblack increment: {self.black_increment}\n"
-                f"\tdepth: {self.depth}\n"
-                f"\tfifty moves rule: {self.fifty_moves_rule}\n"
-                f"\theuristic type: {self.heuristic_type}\n"
-                f"\tsyzygy path: {self.syzygy_path}\n"
-                f"\tsyzygy probe limit: {self.syzygy_probe_limit}\n"
-                f")\n")
+        return (
+            f"SearchOptions(\n"
+            f"\tboard: {self.board}\n"
+            f"\tmove time: {self.movetime}\n"
+            f"\twhite time: {self.white_time}\n"
+            f"\twhite increment: {self.white_increment}\n"
+            f"\tblack time: {self.black_time}\n"
+            f"\tblack increment: {self.black_increment}\n"
+            f"\tdepth: {self.depth}\n"
+            f"\tfifty moves rule: {self.fifty_moves_rule}\n"
+            f"\theuristic type: {self.heuristic_type}\n"
+            f"\tmodel file: {self.model_file}\n"
+            f"\tsyzygy path: {self.syzygy_path}\n"
+            f"\tsyzygy probe limit: {self.syzygy_probe_limit}\n"
+            f")\n"
+        )
 
     @staticmethod
     def get_uci_options() -> list[str]:
@@ -60,35 +65,37 @@ class SearchOptions:
         :return: list of uci formatted options
         """
         return [
-            "option name Heuristic type combo default classical var classical var random",
+            "option name Heuristic type combo default classical "
+            "var classical var neural_network var legacy_neural_network var random",
+            "option name ModelFile type string default <empty>",
             "option name Syzygy50MoveRule type check default true",
             "option name SyzygyPath type string default <empty>",
             "option name SyzygyProbeLimit type spin default 7 min 0 max 7",
         ]
 
-    def reset(self):
-        """ Reset search options and board. """
+    def reset(self) -> None:
+        """Reset search options and board."""
         self.board = Board()
         self.reset_temporary_parameters()
 
     def set_position(self, args: list[str]) -> None:
-        """ Parse arguments and set position. """
+        """Parse arguments and set position."""
         self.board = Board()
 
         if args[0] == "fen" and "moves" not in args:
             self.board = Board(" ".join(args[1:]))
             return
-        elif "moves" not in args:
+        if "moves" not in args:
             return
 
         if args[0] == "fen":
-            self.board = Board(" ".join(args[1:args.index("moves")]))
+            self.board = Board(" ".join(args[1 : args.index("moves")]))
 
-        for move in args[args.index("moves") + 1:]:
+        for move in args[args.index("moves") + 1 :]:
             self.board.push_uci(move)
 
     def set_search_parameters(self, args: list[str]) -> None:
-        """ Parse arguments and set search parameters. """
+        """Parse arguments and set search parameters."""
         self.reset_temporary_parameters()
 
         # special case where 'go' is called with no arguments
@@ -114,25 +121,28 @@ class SearchOptions:
 
     def set_option(self, args: list[str]) -> None:
         """
-        Set search option, not changed until specific action (no reset).
+        Set the search option, not changed until a specific action (no reset).
         :param args: arguments of setoption command
         """
         option_name = args[1].lower()
         value = " ".join(args[3:]).lower()
 
         match option_name:
+            case "syzygy50moverule":
+                self.fifty_moves_rule = value == "true"
             case "heuristic":
                 try:
                     self.heuristic_type = HeuristicType.from_str(value)
                 except RuntimeError as err:
                     print(err)
+            case "modelfile":
+                path = Path(value.replace("\\", "/"))
+                self.model_file = path if path.exists() else None
             case "syzygypath":
-                path = Path(value.replace('\\', '/'))
+                path = Path(value.replace("\\", "/"))
                 self.syzygy_path = path if path.exists() else None
             case "syzygyprobelimit":
                 self.syzygy_probe_limit = int(value)
-            case "syzygy50moverule":
-                self.fifty_moves_rule = value == "true"
 
     @property
     def time_options(self) -> dict[str, int]:
@@ -145,16 +155,16 @@ class SearchOptions:
             "wtime": self.white_time,
             "winc": self.white_increment,
             "btime": self.black_time,
-            "binc": self.black_increment
+            "binc": self.black_increment,
         }
 
     @property
     def has_time_options(self) -> bool:
-        """ Information whether any time option is present. """
+        """Information whether any time option is present."""
         return any(option != 0 for option in self.time_options.values())
 
     def reset_temporary_parameters(self) -> None:
-        """ Reset temporary parameters only. """
+        """Reset temporary parameters only."""
         self.movetime = 0
         self.white_time = 0
         self.white_increment = 0

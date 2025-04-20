@@ -1,0 +1,5 @@
+keras==3.9.0
+matplotlib==3.10.1
+onnx2keras==0.0.24
+ruff==0.11.6
+scikit-learn=1.6.1

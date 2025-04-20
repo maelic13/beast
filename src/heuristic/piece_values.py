@@ -5,6 +5,7 @@ class PieceValues:
     """
     Values of chess pieces based on human theory.
     """
+
     PAWN_VALUE = 100
     KNIGHT_VALUE = 350
     BISHOP_VALUE = 350
@@ -22,5 +23,5 @@ class PieceValues:
             KNIGHT: cls.KNIGHT_VALUE,
             BISHOP: cls.BISHOP_VALUE,
             ROOK: cls.ROOK_VALUE,
-            QUEEN: cls.QUEEN_VALUE
+            QUEEN: cls.QUEEN_VALUE,
         }

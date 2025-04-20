@@ -6,7 +6,7 @@ from .heuristic import Heuristic
 
 
 class RandomHeuristic(Heuristic):
-    """ Random heuristic.  """
+    """Random heuristic."""
 
     @staticmethod
     def use_quiescence() -> bool:

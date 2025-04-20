@@ -2,13 +2,24 @@ from multiprocessing import Event, Queue
 from random import choice
 from threading import Timer
 from time import time
+from typing import TYPE_CHECKING
 
-from chess import Board, Move, PAWN
+from chess import PAWN, Board, Move
 
 from constants import Constants
-from engine_command import EngineCommand
-from heuristic import ClassicalHeuristic, Heuristic, HeuristicType, PieceValues, RandomHeuristic
+from heuristic import (
+    ClassicalHeuristic,
+    Heuristic,
+    HeuristicType,
+    LegacyNeuralNetwork,
+    NeuralNetwork,
+    PieceValues,
+    RandomHeuristic,
+)
 from search_options import SearchOptions
+
+if TYPE_CHECKING:
+    from engine_command import EngineCommand
 
 
 class Engine:
@@ -28,7 +39,7 @@ class Engine:
 
             if command.quit:
                 break
-            elif command.stop:
+            if command.stop:
                 continue
 
             self._heuristic = self._choose_heuristic(command.search_options)
@@ -43,14 +54,16 @@ class Engine:
         :raise RuntimeError: stop calculation
         """
         if self._timeout.is_set():
-            raise RuntimeError("Time-out.")
+            msg = "Time-out."
+            raise RuntimeError(msg)
 
         if self._queue.empty():
             return
 
         command = self._queue.get_nowait()
         if command.stop or command.quit:
-            raise RuntimeError(f"Command: stop - {command.stop}, quit - {command.quit}")
+            msg = f"Command: stop - {command.stop}, quit - {command.quit}"
+            raise RuntimeError(msg)
 
     @staticmethod
     def _choose_heuristic(search_options: SearchOptions) -> Heuristic:
@@ -61,7 +74,8 @@ class Engine:
         classical_heuristic = ClassicalHeuristic(
             fifty_moves_rule=search_options.fifty_moves_rule,
             syzygy_path=search_options.syzygy_path,
-            syzygy_probe_limit=search_options.syzygy_probe_limit)
+            syzygy_probe_limit=search_options.syzygy_probe_limit,
+        )
 
         if search_options.heuristic_type == HeuristicType.CLASSICAL:
             return classical_heuristic
@@ -69,6 +83,25 @@ class Engine:
         if search_options.heuristic_type == HeuristicType.RANDOM:
             search_options.depth = 1
             return RandomHeuristic()
+
+        if search_options.model_file is None or not search_options.model_file.exists():
+            return classical_heuristic
+
+        if search_options.heuristic_type == HeuristicType.NEURAL_NETWORK:
+            return NeuralNetwork(
+                model_file=search_options.model_file,
+                fifty_moves_rule=search_options.fifty_moves_rule,
+                syzygy_path=search_options.syzygy_path,
+                syzygy_probe_limit=search_options.syzygy_probe_limit,
+            )
+
+        if search_options.heuristic_type == HeuristicType.LEGACY_NEURAL_NETWORK:
+            return LegacyNeuralNetwork(
+                model_file=search_options.model_file,
+                fifty_moves_rule=search_options.fifty_moves_rule,
+                syzygy_path=search_options.syzygy_path,
+                syzygy_probe_limit=search_options.syzygy_probe_limit,
+            )
 
         return classical_heuristic
 
@@ -85,11 +118,11 @@ class Engine:
 
         time_for_move: int | None = None
         if search_options.movetime != 0:
-            time_for_move = (search_options.movetime - Constants.TIME_FLEX) / 1000.
+            time_for_move = (search_options.movetime - Constants.TIME_FLEX) / 1000.0
         if search_options.board.turn and search_options.white_time != 0:
-            time_for_move = (0.2 * search_options.white_time - Constants.TIME_FLEX) / 1000.
+            time_for_move = (0.2 * search_options.white_time - Constants.TIME_FLEX) / 1000.0
         if not search_options.board.turn and search_options.black_time != 0:
-            time_for_move = (0.2 * search_options.black_time - Constants.TIME_FLEX) / 1000.
+            time_for_move = (0.2 * search_options.black_time - Constants.TIME_FLEX) / 1000.0
 
         if time_for_move is None:
             # wrong time options, do not start timer
@@ -113,20 +146,24 @@ class Engine:
         while depth < max_depth:
             depth += 1
             try:
-                evaluation, moves = self._negamax(board, depth, float('-inf'), float('inf'))
+                evaluation, moves = self._negamax(board, depth, float("-inf"), float("inf"))
             except RuntimeError:
                 break
 
             current_time = time() - search_started
-            print(f"info depth {depth} score cp {evaluation} "
-                  f"nodes {self._nodes_searched} nps {int(self._nodes_searched / current_time)} "
-                  f"time {round(1000 * current_time)} "
-                  f"pv {' '.join([move.uci() for move in moves])}", flush=True)
+            print(
+                f"info depth {depth} score cp {evaluation} "
+                f"nodes {self._nodes_searched} nps {int(self._nodes_searched / current_time)} "
+                f"time {round(1000 * current_time)} "
+                f"pv {' '.join([move.uci() for move in moves])}",
+                flush=True,
+            )
 
         print(f"bestmove {moves[0].uci()}", flush=True)
 
-    def _negamax(self, board: Board, depth: float, alpha: float, beta: float
-                 ) -> tuple[float, list[Move]]:
+    def _negamax(
+        self, board: Board, depth: float, alpha: float, beta: float
+    ) -> tuple[float, list[Move]]:
         """
         Depth first search with pruning.
         :param board: chess board representation
@@ -138,7 +175,7 @@ class Engine:
         self._check_stop()
         self._nodes_searched += 1
 
-        if board.is_game_over() or depth == 0 and not self._heuristic.use_quiescence():
+        if board.is_game_over() or (depth == 0 and not self._heuristic.use_quiescence()):
             return self._heuristic.evaluate(board), []
         if depth == 0 and self._heuristic.use_quiescence():
             return self._quiescence(board, alpha, beta), []
@@ -178,18 +215,17 @@ class Engine:
             return beta
 
         use_delta_pruning = len(board.piece_map()) > 8
-        if use_delta_pruning:
-            if evaluation < alpha - 1000:
-                return alpha
+        if use_delta_pruning and evaluation < alpha - 1000:
+            return alpha
 
-        if evaluation > alpha:
-            alpha = evaluation
+        alpha = max(alpha, evaluation)
 
         # expansion and search
         for move in self._get_captures_and_checks(board):
             if use_delta_pruning and board.is_capture(move):
                 captured_piece = (
-                    PAWN if board.is_en_passant(move) else board.piece_type_at(move.to_square))
+                    PAWN if board.is_en_passant(move) else board.piece_type_at(move.to_square)
+                )
                 piece_value = PieceValues.as_dict().get(captured_piece) + 200
                 if evaluation + piece_value < alpha:
                     continue
@@ -201,8 +237,7 @@ class Engine:
 
             if score >= beta:
                 return beta
-            if score > alpha:
-                alpha = score
+            alpha = max(alpha, score)
 
         return alpha
 
@@ -214,5 +249,6 @@ class Engine:
         :return: all moves that either capture a piece, or give check from current position
         """
         # TODO: move ordering to get best results
-        return [move for move in board.legal_moves
-                if board.is_capture(move) or board.gives_check(move)]
+        return [
+            move for move in board.legal_moves if board.is_capture(move) or board.gives_check(move)
+        ]

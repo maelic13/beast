@@ -6,5 +6,5 @@ class Constants:
 
     # constants
     DEFAULT_DEPTH: float = 2
-    INFINITE_DEPTH = float('inf')
+    INFINITE_DEPTH = float("inf")
     TIME_FLEX = 10  # [ms]
