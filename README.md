@@ -20,10 +20,10 @@ Install python virtual environment via **install/install.ps1** file. Use help ar
 to see options if you need dev environment.
 
 ## EXE
-You can compile yourself from exe\{language} sub-projects.
+You can compile yourself from exe_runner\{language} subprojects.
 
 Tested and working for Hiarcs Chess Explorer and Arena. Other GUIs likely work but not tested.
 
 The exe must be placed in beast repo (root), expecting following relative paths to exist
-- ./venv/scripts/python.exe
+- ./.venv(_dev)/scripts/python.exe
 - ./src/beast.py

@@ -6,9 +6,11 @@ bin/
 build/
 cmake*/
 obj/
+target/
 
 # files
 *.exe
 *.h5
 *.pgn
 *.pyc
+Cargo.lock
