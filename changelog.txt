@@ -1,63 +1,69 @@
+v2.1
+- new installation script
+- switch to ONNX backend for neural networks
+- add neural networks to repo
+- include source code for exe runner
+
 v2.0
-    + complete re-write of engine
-    + support for new mode structure
-    + support for the best legacy model structure
-    + 100% speed-up
+- complete re-write of the engine
+- support for new mode structure
+- support for the best legacy model structure
+- 100% speed-up
 
 v1.5
-    + 25% speed-up for classical evaluation
-    + complete typing to the engine
-    + explanatory docstrings
-    + better legacy nets support
-    + better codestyle
+- 25% speed-up for classical evaluation
+- complete typing to the engine
+- explanatory docstrings
+- better legacy nets support
+- better codestyle
 
 v1.1
-    - old nn_backend generating files
-    + new pgn_convert with multiprocessing
-    + beginning of new train network script
+- remove old nn_backend generating files
+- new pgn_convert with multiprocessing
+- beginning of a new train network script
 
 v1.0
-    restructure
-    + venv.cmd for easy venv creation
-    + build.cmd for easy executable build (dependent on venv!)
-    + move to tensorflow 2
+- restructure
+- venv.cmd for easy venv creation
+- build.cmd for easy executable build (dependent on venv!)
+- move to tensorflow 2
 
 v0.09
-    + rework of alphabeta pruning (negamax variation)
-    + real quiescence search
-    + delta pruning
-    + repaired 3-fold repetition
-    + repaired 50-moves rule
-    + enhanced syzygy hinted endgames by own heuristic
-    + overall speedup
+- rework of alphabeta pruning (negamax variation)
+- real quiescence search
+- delta pruning
+- repaired 3-fold repetition
+- repaired 50-moves rule
+- enhanced syzygy hinted endgames by own heuristic
+- overall speedup
 
 v0.08:
-    + rework of neural network heuristic (regression and classification models)
-    + random move heuristic
-    + nn_backend source
-    + learning_data source
+- rework of neural network heuristic (regression and classification models)
+- add random move heuristic
+- add nn_backend source
+- add learning_data source
 
 v0.07:
-    correction for giving eval from side to move rather than from white's point of view
-    + option quiescence
-    drop ponder from printing bestmove (since it does not ponder at all)
-    + neural network heuristic (two models)
+- correction for giving eval from side to move rather than from white's point of view
+- add quiescence option
+- drop ponder from printing bestmove (since it does not ponder at all)
+- add neural network heuristic (two models)
 
 v0.06:
-    + Selective search
-    + FullPruned search
-    + Syzygy tablebases support
-    + pseudo quiescence search
-    rework of heuristic, solid elo gain in self-play
-    correction of full expansion and pruned expansion
-    rework of expansion priority
-    bugfix of stop command, add flag to search
-    bugfix for node and nps count
+- add Selective search
+- add FullPruned search
+- add Syzygy tablebases support
+- add pseudo quiescence search
+- rework of heuristic, solid elo gain in self-play
+- correction of full expansion and pruned expansion
+- rework of expansion priority
+- bugfix of stop command, add a flag to search
+- bugfix for node and nps count
 
 v0.05:
-    + time-management
-    + communication features (most covered, all important)
-    + structure rewrite, ready for new features, ease of use
+- add time-management
+- add communication features (most covered, all important)
+- structure rewrite, ready for new features, ease of use
 
 v0.04:
-    first functional version with many limits in commands and heuristic.
+- first functional version with many limits in commands and heuristic.

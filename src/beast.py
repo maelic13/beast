@@ -11,7 +11,7 @@ def main() -> None:
 
     queue = Queue()
     Process(target=Engine(queue).start, daemon=True).start()
-    sleep(0.1)  # wait for process to start
+    sleep(0.1)  # wait for the process to start
 
     UciProtocol(queue).uci_loop()
 

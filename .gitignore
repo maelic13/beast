@@ -5,6 +5,7 @@
 bin/
 build/
 cmake*/
+dist/
 obj/
 target/
 
@@ -13,4 +14,5 @@ target/
 *.h5
 *.pgn
 *.pyc
+*.spec
 Cargo.lock
