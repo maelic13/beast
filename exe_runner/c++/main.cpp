@@ -9,10 +9,16 @@ int main() {
     const std::string python_script_path = "./src/beast.py";
 
     std::string python_exe_path;
-    if (std::filesystem::exists(dev_python_path)) {
+    if (std::filesystem::exists(default_python_path)) {
+        python_exe_path = default_python_path;
+    } else if (std::filesystem::exists(dev_python_path)) {
         python_exe_path = dev_python_path;
     } else {
-        python_exe_path = default_python_path;
+        std::cout << "Python environment not found, use install.ps1 to setup first." << std::endl;
+        std::cout << "Check that beast.exe is located in root folder next to the .venv." << std::endl;
+        std::cout << "Press ENTER to exit..." << std::endl;
+        std::cin.get();
+        return EXIT_FAILURE;
     }
 
     STARTUPINFO si;
