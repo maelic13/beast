@@ -35,7 +35,7 @@ class NeuralNetwork(Heuristic):
         """
         return False
 
-    def _evaluate_internal(self, _board: Board) -> float:
+    def _evaluate_internal(self, _board: Board) -> float:  # noqa: PLR6301
         """
         Evaluate board and return value in centi-pawns.
         :param _board: chess board representation

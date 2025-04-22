@@ -98,16 +98,14 @@ class BeastNeuralNetwork:
             and -1 in square of the opponent's piece.
         """
         board = Board(fen)
-        return np.asarray(
-            [
-                np.reshape(
-                    np.asarray(board.pieces(piece_type, board.turn).tolist(), int)
-                    - np.asarray(board.pieces(piece_type, not board.turn).tolist(), int),
-                    (8, 8),
-                )
-                for piece_type in [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING]
-            ]
-        )
+        return np.asarray([
+            np.reshape(
+                np.asarray(board.pieces(piece_type, board.turn).tolist(), int)
+                - np.asarray(board.pieces(piece_type, not board.turn).tolist(), int),
+                (8, 8),
+            )
+            for piece_type in [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING]
+        ])
 
     def evaluate_model(self, x_test: Iterable[np.ndarray], y_test: Iterable[np.ndarray]) -> None:
         """
@@ -133,18 +131,16 @@ class BeastNeuralNetwork:
         Create and compile a model structure.
         :return: Model structure
         """
-        model = models.Sequential(
-            [
-                layers.Conv2D(128, kernel_size=3, input_shape=(6, 8, 8), activation="relu"),
-                layers.BatchNormalization(),
-                layers.Conv2D(128, kernel_size=3, activation="relu"),
-                layers.BatchNormalization(),
-                layers.Flatten(),
-                layers.Dense(256, activation="relu"),
-                layers.Dropout(0.2),
-                layers.Dense(1, activation="sigmoid"),
-            ]
-        )
+        model = models.Sequential([
+            layers.Conv2D(128, kernel_size=3, input_shape=(6, 8, 8), activation="relu"),
+            layers.BatchNormalization(),
+            layers.Conv2D(128, kernel_size=3, activation="relu"),
+            layers.BatchNormalization(),
+            layers.Flatten(),
+            layers.Dense(256, activation="relu"),
+            layers.Dropout(0.2),
+            layers.Dense(1, activation="sigmoid"),
+        ])
 
         model.compile(
             loss=losses.BinaryCrossentropy(),

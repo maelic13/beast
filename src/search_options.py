@@ -35,8 +35,8 @@ class SearchOptions:
         self.depth: float = Constants.INFINITE_DEPTH
 
         self.fifty_moves_rule = True
-        self.heuristic_type = HeuristicType.CLASSICAL
-        self.model_file: Path | None = None
+        self.heuristic_type = HeuristicType.LEGACY_NEURAL_NETWORK
+        self.model_file: Path | None = Constants.ROOT_PATH / "nets" / Constants.BEST_MODEL
         self.syzygy_path: Path | None = None
         self.syzygy_probe_limit: int = 7
 
@@ -64,13 +64,17 @@ class SearchOptions:
         Available options to be set in uci string format.
         :return: list of uci formatted options
         """
+        options = SearchOptions()
         return [
-            "option name Heuristic type combo default classical "
-            "var classical var neural_network var legacy_neural_network var random",
-            "option name ModelFile type string default <empty>",
-            "option name Syzygy50MoveRule type check default true",
-            "option name SyzygyPath type string default <empty>",
-            "option name SyzygyProbeLimit type spin default 7 min 0 max 7",
+            f"option name Heuristic type combo "
+            f"default {options.heuristic_type.name.lower()} "
+            f"var {' var '.join(h.name.lower() for h in HeuristicType)}",
+            f"option name ModelFile type string "
+            f"default {str(options.model_file if options.model_file else "<empty>")} ",
+            f"option name Syzygy50MoveRule type check default {options.fifty_moves_rule}",
+            f"option name SyzygyPath type string "
+            f"default {str(options.syzygy_path) if options.syzygy_path else "<empty>"}",
+            f"option name SyzygyProbeLimit type spin default {options.syzygy_probe_limit} min 0 max 7",
         ]
 
     def reset(self) -> None:

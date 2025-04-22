@@ -34,7 +34,7 @@ class ClassicalHeuristic(Heuristic):
         """
         return True
 
-    def _evaluate_internal(self, board: Board) -> float:
+    def _evaluate_internal(self, board: Board) -> float:  # noqa: PLR0914
         """
         Classical style heuristic function based on piece values and derived from human knowledge.
         :param board: board representation

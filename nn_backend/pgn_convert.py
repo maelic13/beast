@@ -150,15 +150,13 @@ class DataHelper:
 
     @classmethod
     def save_evaluated_data_to_file(cls, data: list[tuple[str, float]], file_name: str) -> None:
-        with open(file_name, "w") as file:
-            for item in data:
-                file.write(f"{item[0]}\t{item[1]}\n")
+        with open(file_name, "w", encoding="utf-8") as file:
+            file.writelines(f"{item[0]}\t{item[1]}\n" for item in data)
 
     @classmethod
     def save_positions_to_file(cls, data: list[str], file_name: str) -> None:
-        with open(file_name, "w") as file:
-            for item in data:
-                file.write(item + "\n")
+        with open(file_name, "w", encoding="utf-8") as file:
+            file.writelines(item + "\n" for item in data)
 
 
 if __name__ == "__main__":

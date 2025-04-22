@@ -85,7 +85,8 @@ class Engine:
             return RandomHeuristic()
 
         if search_options.model_file is None:
-            raise RuntimeError(f"Warning: incorrect model file.")
+            msg = "Warning: incorrect model file."
+            raise RuntimeError(msg)
 
         if search_options.heuristic_type == HeuristicType.NEURAL_NETWORK:
             return NeuralNetwork(

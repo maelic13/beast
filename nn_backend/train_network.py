@@ -19,7 +19,7 @@ class ModelTrainer:
         """
         start = time()
         print("Loading txt data...")
-        with open(path_to_file) as file:
+        with open(path_to_file, encoding="utf-8") as file:
             lines = file.readlines()
 
         fens: list[str] = []
