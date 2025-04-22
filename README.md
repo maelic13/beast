@@ -16,11 +16,13 @@ The exe runner can be connected to your preferred GUI, communicating via UCI pro
 but has to be compiled from C#, C++ or Rust code.
 
 ## Prerequisites
+Install Python 3.12 from https://python.org/ website. 
+
 Install python virtual environment via **install/install.ps1** file. Use help argument
 to see options if you need dev environment.
 
 ## EXE
-You can compile yourself from exe_runner\{language} subprojects.
+You can compile yourself from exe_runner/{language} subprojects.
 
 Tested and working for Hiarcs Chess Explorer and Arena. Other GUIs likely work but not tested.
 
