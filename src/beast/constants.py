@@ -14,5 +14,6 @@ class Constants:
     TIME_FLEX = 10  # [ms]
 
     # paths
-    ROOT_PATH = Path(__file__).parent.parent
-    NETS_PATH = ROOT_PATH / "nets"
+    ROOT_PATH = Path(__file__).parent.parent.parent
+    DATA_PATH = ROOT_PATH / "data"
+    NETS_PATH = ROOT_PATH / "models"

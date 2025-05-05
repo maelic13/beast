@@ -2,8 +2,8 @@ from pathlib import Path
 
 from chess import Board
 
-from constants import Constants
-from heuristic import HeuristicType
+from .constants import Constants
+from .heuristic import HeuristicType
 
 
 class SearchOptions:
@@ -69,12 +69,12 @@ class SearchOptions:
             f"option name Heuristic type combo "
             f"default {options.heuristic_type.name.lower()} "
             f"var {' var '.join(h.name.lower() for h in HeuristicType)}",
-            f"option name ModelFile type string "
-            f"default {str(options.model_file if options.model_file else "<empty>")} ",
+            f"option name ModelFile type string default {options.model_file or '<empty>'!s} ",
             f"option name Syzygy50MoveRule type check default {options.fifty_moves_rule}",
             f"option name SyzygyPath type string "
-            f"default {str(options.syzygy_path) if options.syzygy_path else "<empty>"}",
-            f"option name SyzygyProbeLimit type spin default {options.syzygy_probe_limit} min 0 max 7",
+            f"default {str(options.syzygy_path) if options.syzygy_path else '<empty>'}",
+            f"option name SyzygyProbeLimit type spin default {options.syzygy_probe_limit} "
+            f"min 0 max 7",
         ]
 
     def reset(self) -> None:

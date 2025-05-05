@@ -1,2 +1,0 @@
-chess==1.11.2
-onnxruntime==1.21.1

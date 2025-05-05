@@ -7,7 +7,7 @@ import numpy as np
 from chess import BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK, Board
 from keras import callbacks, layers, losses, metrics, models, optimizers, saving
 
-from .pgn_convert import DataHelper
+from .pgn_converter import DataHelper
 
 
 class BeastNeuralNetwork:

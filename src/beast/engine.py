@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from chess import PAWN, Board, Move
 
-from constants import Constants
-from heuristic import (
+from .constants import Constants
+from .heuristic import (
     ClassicalHeuristic,
     Heuristic,
     HeuristicType,
@@ -16,7 +16,7 @@ from heuristic import (
     PieceValues,
     RandomHeuristic,
 )
-from search_options import SearchOptions
+from .search_options import SearchOptions
 
 if TYPE_CHECKING:
     from engine_command import EngineCommand

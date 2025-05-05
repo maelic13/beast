@@ -6,7 +6,7 @@ from chess.engine import Limit, SimpleEngine
 from chess.pgn import Game, read_game
 
 
-class DataHelper:
+class PgnConverter:
     _stockfish_path = "stockfish.exe"
 
     @classmethod
@@ -157,39 +157,3 @@ class DataHelper:
     def save_positions_to_file(cls, data: list[str], file_name: str) -> None:
         with open(file_name, "w", encoding="utf-8") as file:
             file.writelines(item + "\n" for item in data)
-
-
-if __name__ == "__main__":
-    files = ["databases/games.pgn"]
-
-    start = time()
-    extracted_positions = DataHelper.parse_pgn_files(files)
-    print(
-        f"Extraction took {int((time() - start) / 60)} minutes "
-        f"{int((time() - start) % 60)} seconds."
-    )
-    print(f"Extracted positions: {len(extracted_positions)}.\n")
-
-    start = time()
-    extracted_positions = list(set(extracted_positions))
-    print(
-        f"Elimination of doubles took {int((time() - start) / 60)} minutes "
-        f"{int((time() - start) % 60)} seconds."
-    )
-    print(f"Extracted positions after doubles elimination: {len(extracted_positions)}.\n")
-
-    # start = time()
-    # DataHelper.save_positions_to_file(extracted_positions, "positions.txt")
-    # print(f"Saving took {int((time() - start) / 60)} minutes "
-    #       f"{int((time() - start) % 60)} seconds.\n")
-
-    start = time()
-    evaluated_positions = DataHelper.evaluate(extracted_positions)
-    print(
-        f"Evaluation took {int((time() - start) / 60)} minutes "
-        f"{int((time() - start) % 60)} seconds."
-    )
-
-    start = time()
-    DataHelper.save_evaluated_data_to_file(evaluated_positions, "data/games.txt")
-    print(f"Saving took {round(time() - start, 2)} seconds.")

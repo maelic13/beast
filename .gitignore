@@ -1,7 +1,10 @@
 # folders
+.app/
+.dev/
 .idea/
 .venv/
 .venv_dev/
+*.egg-info
 bin/
 build/
 cmake*/

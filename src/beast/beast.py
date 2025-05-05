@@ -1,9 +1,9 @@
 from multiprocessing import Process, Queue
 from time import sleep
 
-from constants import Constants
-from engine import Engine
-from uci_protocol import UciProtocol
+from .constants import Constants
+from .engine import Engine
+from .uci_protocol import UciProtocol
 
 
 def main() -> None:

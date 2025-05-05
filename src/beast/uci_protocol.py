@@ -1,9 +1,9 @@
 from copy import deepcopy
 from multiprocessing import Queue
 
-from constants import Constants
-from engine_command import EngineCommand
-from search_options import SearchOptions
+from .constants import Constants
+from .engine_command import EngineCommand
+from .search_options import SearchOptions
 
 
 class UciProtocol:
