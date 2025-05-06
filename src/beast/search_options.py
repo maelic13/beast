@@ -2,8 +2,8 @@ from pathlib import Path
 
 from chess import Board
 
-from .constants import Constants
-from .heuristic import HeuristicType
+from beast.constants import Constants
+from beast.heuristic import HeuristicType
 
 
 class SearchOptions:

@@ -4,7 +4,7 @@ import numpy as np
 import onnxruntime as ort
 from chess import Board
 
-from .heuristic import Heuristic
+from beast.heuristic.heuristic import Heuristic
 
 
 class NeuralNetwork(Heuristic):

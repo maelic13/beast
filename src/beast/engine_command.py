@@ -1,4 +1,4 @@
-from .search_options import SearchOptions
+from beast.search_options import SearchOptions
 
 
 class EngineCommand:

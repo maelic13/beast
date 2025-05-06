@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from chess import PAWN, Board, Move
 
-from .constants import Constants
-from .heuristic import (
+from beast.constants import Constants
+from beast.heuristic import (
     ClassicalHeuristic,
     Heuristic,
     HeuristicType,

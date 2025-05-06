@@ -7,7 +7,7 @@ UCI compatible chess engine with neural network support
 - 4 types of heuristic (classic, neural network, legacy neural network, random play)
 - syzygy tablebases support
 
-# How to run
+# How to use
 Beast can be run
 - from python console via src/beast/beast.py
 - using exe runner file

@@ -1,17 +1,12 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "beast"
 version = "2.2.0"
+authors = [{name = "Miloslav Macůrek"}]
 description = "Beast - UCI Chess Engine"
-readme = "README.md"
 requires-python = "==3.12.*"
-license = {text = "Proprietary"}
-authors = [
-    {name = "Miloslav Macůrek"}
-]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+
 dependencies = [
     "chess==1.11.2",
     "onnxruntime==1.21.1",
@@ -29,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-calculator = "beast.beast:main"
+beast = "beast.beast:main"
 
 [tool.ruff]
 line-length = 100

@@ -1,7 +1,7 @@
 from chess import BISHOP, BLACK, KNIGHT, PAWN, QUEEN, ROOK, WHITE, Board, SquareSet
 
-from .heuristic import Heuristic
-from .piece_values import PieceValues
+from beast.heuristic.heuristic import Heuristic
+from beast.heuristic.piece_values import PieceValues
 
 
 class ClassicalHeuristic(Heuristic):

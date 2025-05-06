@@ -2,7 +2,7 @@ from random import randint
 
 from chess import Board
 
-from .heuristic import Heuristic
+from beast.heuristic.heuristic import Heuristic
 
 
 class RandomHeuristic(Heuristic):
