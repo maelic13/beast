@@ -1,48 +1,109 @@
+from functools import partial
 from multiprocessing import Pool, cpu_count, current_process
+from pathlib import Path
 from time import time
 
+import numpy as np
 from chess import Board
 from chess.engine import Limit, SimpleEngine
 from chess.pgn import Game, read_game
 
 
 class PgnConverter:
-    _stockfish_path = "stockfish.exe"
-
     @classmethod
-    def parse_pgn_files(cls, game_file_names: list[str]) -> list[str]:
-        positions: list[str] = []
-        with Pool() as pool:
-            for sub_result in pool.map(cls._get_positions, game_file_names):
-                positions += sub_result
-        return positions
-
-    @classmethod
-    def _get_positions(cls, file_name: str) -> list[str]:
+    def parse_pgn_files(cls, pgn_files: list[Path]) -> list[str]:
         positions: list[str] = []
         num_games = 0
         log_after = 10000
         start_time = time()
         local_start_time = time()
-        with open(file_name, encoding="UTF-8") as game_file:
-            game = read_game(game_file)
-            while game is not None:
-                positions += cls._parse_game(game)
-                game = read_game(game_file)
-                num_games += 1
-                if num_games % log_after == 0:
-                    cls._log_extracting_progress(
-                        file_name,
-                        start_time,
-                        local_start_time,
-                        num_games,
-                        log_after,
-                        len(positions),
-                    )
-                    local_start_time = time()
-        cls._log_extracting_progress(
-            file_name, start_time, local_start_time, num_games, None, len(positions)
+        for pgn_file in pgn_files:
+            with open(pgn_file, encoding="UTF-8") as file:
+                game = read_game(file)
+                while game is not None:
+                    positions += cls._parse_game(game)
+                    game = read_game(file)
+                    num_games += 1
+                    if num_games % log_after == 0:
+                        cls._log_extracting_progress(
+                            pgn_file.name,
+                            start_time,
+                            local_start_time,
+                            num_games,
+                            log_after,
+                            len(positions),
+                        )
+                        local_start_time = time()
+            cls._log_extracting_progress(
+                pgn_file.name, start_time, local_start_time, num_games, None, len(positions)
+            )
+
+        print(
+            f"Extraction took {int((time() - start_time) / 60)} minutes "
+            f"{int((time() - start_time) % 60)} seconds."
         )
+        print(f"Extracted positions: {len(positions)}.\n")
+
+        start_time = time()
+        positions = list(set(positions))
+        print(
+            f"Elimination of doubles took {int((time() - start_time) / 60)} minutes "
+            f"{int((time() - start_time) % 60)} seconds."
+        )
+        print(f"Extracted positions after doubles elimination: {len(positions)}.\n")
+
+        return positions
+
+    @classmethod
+    def evaluate_positions(
+        cls, positions: list[str], stockfish_path: Path, num_processes: int | None = None
+    ) -> list[tuple[str, float]]:
+        num_processes = num_processes or cpu_count()
+        eval_positions: list[tuple[str, float]] = []
+        positions = cls._parse_data(positions, num_processes)
+
+        evaluate_with_path = partial(cls._evaluate_positions, stockfish_path=stockfish_path)
+
+        with Pool(processes=num_processes) as pool:
+            for sub_result in pool.imap(evaluate_with_path, positions):
+                eval_positions += sub_result
+        return eval_positions
+
+    @classmethod
+    def save_evaluated_data_to_file(cls, data: list[tuple[str, float]], file_path: Path) -> None:
+        print(f"Saving positions to {file_path}...")
+        start = time()
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.writelines(f"{item[0]}\t{item[1]}\n" for item in data)
+        print(f"Saving took {int(time() - start)} seconds.")
+
+    @classmethod
+    def load_evaluated_positions_from_file(cls, file_path: Path) -> tuple[np.ndarray, np.ndarray]:
+        print(f"Loading positions and evaluations from {file_path}...")
+        start = time()
+        data = np.loadtxt(file_path, delimiter="\t")
+        positions = data[:, 0]
+        evaluations = data[:, 1]
+        print(f"Loading took {int(time() - start)} seconds.")
+        print(f"Loaded {len(positions)} positions and evaluations.")
+        return positions, evaluations
+
+    @classmethod
+    def save_positions_to_file(cls, data: list[str], file_path: Path) -> None:
+        print(f"Saving positions to {file_path}...")
+        start = time()
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.writelines(item + "\n" for item in data)
+        print(f"Saving took {int(time() - start)} seconds.")
+
+    @classmethod
+    def load_positions_from_file(cls, file_path: Path) -> list[str]:
+        print(f"Loading positions from {file_path}...")
+        start = time()
+        with open(file_path, encoding="utf-8") as file:
+            positions = file.readlines()
+        print(f"Loading took {int(time() - start)} seconds.")
+        print(f"Loaded {len(positions)} positions.")
         return positions
 
     @classmethod
@@ -76,26 +137,13 @@ class PgnConverter:
         return positions
 
     @classmethod
-    def evaluate(
-        cls, positions: list[str], num_processes: int | None = None
-    ) -> list[tuple[str, float]]:
-        num_processes = num_processes or cpu_count()
-        eval_positions: list[tuple[str, float]] = []
-        positions = cls.parse_data(positions, num_processes)
-
-        with Pool(processes=num_processes) as pool:
-            for sub_result in pool.map(cls._evaluate_positions, positions):
-                eval_positions += sub_result
-        return eval_positions
-
-    @classmethod
-    def _evaluate_positions(cls, data: list[str]) -> list[tuple[str, float]]:
+    def _evaluate_positions(cls, data: list[str], stockfish_path: Path) -> list[tuple[str, float]]:
         log_after = 1000
         start_time = time()
         local_start_time = time()
 
         analysed_positions: list[tuple[str, float]] = []
-        stockfish = SimpleEngine.popen_uci(cls._stockfish_path)
+        stockfish = SimpleEngine.popen_uci(str(stockfish_path))
         for position in data:
             score = stockfish.analyse(Board(fen=position), Limit(depth=10))["score"]
             analysed_positions.append((position, score.relative.wdl().expectation()))
@@ -144,16 +192,6 @@ class PgnConverter:
         print()
 
     @classmethod
-    def parse_data(cls, data: list[str], num_processes: int) -> list[list[str]]:
+    def _parse_data(cls, data: list[str], num_processes: int) -> list[list[str]]:
         k, m = divmod(len(data), num_processes)
         return [data[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(num_processes)]
-
-    @classmethod
-    def save_evaluated_data_to_file(cls, data: list[tuple[str, float]], file_name: str) -> None:
-        with open(file_name, "w", encoding="utf-8") as file:
-            file.writelines(f"{item[0]}\t{item[1]}\n" for item in data)
-
-    @classmethod
-    def save_positions_to_file(cls, data: list[str], file_name: str) -> None:
-        with open(file_name, "w", encoding="utf-8") as file:
-            file.writelines(item + "\n" for item in data)
