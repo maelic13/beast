@@ -78,12 +78,18 @@ class PgnConverter:
         print(f"Saving took {int(time() - start)} seconds.")
 
     @classmethod
-    def load_evaluated_positions_from_file(cls, file_path: Path) -> tuple[np.ndarray, np.ndarray]:
+    def load_evaluated_positions_from_file(cls, file_path: Path) -> tuple[list[str], list[float]]:
         print(f"Loading positions and evaluations from {file_path}...")
+
         start = time()
-        data = np.loadtxt(file_path, delimiter="\t")
-        positions = data[:, 0]
-        evaluations = data[:, 1]
+        positions: list[str] = []
+        evaluations: list[float] = []
+        with open(file_path, encoding="utf-8") as file:
+            for line in file.readlines():
+                position, evaluation = line.strip().split("\t")
+                positions.append(position)
+                evaluations.append(float(evaluation))
+
         print(f"Loading took {int(time() - start)} seconds.")
         print(f"Loaded {len(positions)} positions and evaluations.")
         return positions, evaluations
@@ -101,7 +107,7 @@ class PgnConverter:
         print(f"Loading positions from {file_path}...")
         start = time()
         with open(file_path, encoding="utf-8") as file:
-            positions = file.readlines()
+            positions = [line.strip() for line in file.readlines()]
         print(f"Loading took {int(time() - start)} seconds.")
         print(f"Loaded {len(positions)} positions.")
         return positions
@@ -179,7 +185,7 @@ class PgnConverter:
         if log_after:
             speed = int(log_after / (current_time - local_start_time))
             print(f"Currently {speed} positions/s")
-        print(f"Globally {int(positions_done / (current_time - start_time))} games/s")
+        print(f"Globally {int(positions_done / (current_time - start_time))} positions/s")
         total_seconds_left = (total_positions - positions_done) / (
             int(log_after / (current_time - local_start_time))
         )
