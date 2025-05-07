@@ -1,3 +1,5 @@
+import operator
+from collections.abc import Iterable, Iterator
 from multiprocessing import Event, Queue
 from random import choice
 from threading import Timer
@@ -16,6 +18,7 @@ from beast.heuristic import (
     PieceValues,
     RandomHeuristic,
 )
+
 from .search_options import SearchOptions
 
 if TYPE_CHECKING:
@@ -183,7 +186,7 @@ class Engine:
             return self._quiescence(board, alpha, beta), []
 
         best_moves: list[Move] = []
-        for move in board.legal_moves:
+        for move in self._order_moves(board, board.legal_moves):
             board.push(move)
             evaluation, moves = self._negamax(board, depth - 1, -beta, -alpha)
             board.pop()
@@ -217,7 +220,7 @@ class Engine:
             return beta
 
         use_delta_pruning = len(board.piece_map()) > 8
-        if use_delta_pruning and evaluation < alpha - 1000:
+        if use_delta_pruning and evaluation < alpha - PieceValues.QUEEN_VALUE:
             return alpha
 
         alpha = max(alpha, evaluation)
@@ -243,14 +246,42 @@ class Engine:
 
         return alpha
 
-    @staticmethod
-    def _get_captures_and_checks(board: Board) -> list[Move]:
+    def _get_captures_and_checks(self, board: Board) -> Iterator[Move]:
         """
         Check for captures and checks for quiescence search.
         :param board: chess board representation
         :return: all moves that either capture a piece, or give check from current position
         """
-        # TODO: move ordering to get best results
-        return [
-            move for move in board.legal_moves if board.is_capture(move) or board.gives_check(move)
-        ]
+        return self._order_moves(
+            board,
+            iter(
+                move
+                for move in board.legal_moves
+                if board.is_capture(move) or board.gives_check(move)
+            ),
+        )
+
+    @staticmethod
+    def _order_moves(board: Board, moves: Iterable[Move]) -> Iterator[Move]:
+        scored_moves: list[tuple[Move, float]] = []
+        for move in moves:
+            score = 0
+
+            if board.is_capture(move):
+                victim_piece = board.piece_at(move.to_square)
+                attacker_piece = board.piece_at(move.from_square)
+                if victim_piece is not None and attacker_piece is not None:
+                    score = PieceValues.as_dict().get(
+                        victim_piece.piece_type, 0
+                    ) * 10 - PieceValues.as_dict().get(attacker_piece.piece_type, 0)
+
+                if move.promotion:
+                    score += PieceValues.as_dict().get(move.promotion, 0) * 5
+
+            if board.gives_check(move):
+                score += 1
+
+            scored_moves.append((move, score))
+
+        scored_moves.sort(key=operator.itemgetter(1), reverse=True)
+        return iter(x[0] for x in scored_moves)

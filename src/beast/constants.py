@@ -16,4 +16,4 @@ class Constants:
     # paths
     ROOT_PATH = Path(__file__).parent.parent.parent
     DATA_PATH = ROOT_PATH / "data"
-    NETS_PATH = ROOT_PATH / "models"
+    MODELS_PATH = ROOT_PATH / "models"

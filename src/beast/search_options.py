@@ -36,7 +36,7 @@ class SearchOptions:
 
         self.fifty_moves_rule = True
         self.heuristic_type = HeuristicType.LEGACY_NEURAL_NETWORK
-        self.model_file: Path | None = Constants.ROOT_PATH / "nets" / Constants.BEST_MODEL
+        self.model_file: Path | None = Constants.MODELS_PATH / Constants.BEST_MODEL
         self.syzygy_path: Path | None = None
         self.syzygy_probe_limit: int = 7
 
