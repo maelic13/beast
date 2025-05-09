@@ -19,11 +19,16 @@ dev = [
     "onnx==1.17.0",
     "ruff==0.11.7",
     "scikit-learn==1.6.1",
-    "torch==2.7.0",
+    "tensorflow==2.19.0",
+    "tf2onnx==1.16.1",
+]
+
+cuda = [
+    "tensorflow[and-cuda]==2.19.0",
 ]
 
 [project.scripts]
-beast = "beast.beast:main"
+beast = "beast.main:main"
 
 [tool.ruff]
 line-length = 100

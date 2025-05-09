@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from chess import PAWN, Board, Move
 
 from beast.constants import Constants
-from beast.heuristic import (
+from beast.heuristics import (
     ClassicalHeuristic,
     Heuristic,
     HeuristicType,

@@ -4,7 +4,7 @@ import chess
 import numpy as np
 import onnxruntime as ort
 
-from beast.heuristic.heuristic import Heuristic
+from beast.heuristics.heuristic import Heuristic
 
 
 class LegacyNeuralNetwork(Heuristic):

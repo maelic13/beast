@@ -3,7 +3,6 @@ from multiprocessing import Pool, cpu_count, current_process
 from pathlib import Path
 from time import time
 
-import numpy as np
 from chess import Board
 from chess.engine import Limit, SimpleEngine
 from chess.pgn import Game, read_game
@@ -85,7 +84,7 @@ class PgnConverter:
         positions: list[str] = []
         evaluations: list[float] = []
         with open(file_path, encoding="utf-8") as file:
-            for line in file.readlines():
+            for line in file:
                 position, evaluation = line.strip().split("\t")
                 positions.append(position)
                 evaluations.append(float(evaluation))
@@ -107,7 +106,7 @@ class PgnConverter:
         print(f"Loading positions from {file_path}...")
         start = time()
         with open(file_path, encoding="utf-8") as file:
-            positions = [line.strip() for line in file.readlines()]
+            positions = [line.strip() for line in file]
         print(f"Loading took {int(time() - start)} seconds.")
         print(f"Loaded {len(positions)} positions.")
         return positions
