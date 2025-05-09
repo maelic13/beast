@@ -1,9 +1,8 @@
 from multiprocessing import Process, Queue
 from time import sleep
 
-from beast.constants import Constants
-from beast.engine import Engine
-from beast.uci_protocol import UciProtocol
+from beast.engine import Engine, UciProtocol
+from beast.infra import Constants
 
 
 def main() -> None:

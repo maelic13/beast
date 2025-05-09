@@ -1,14 +1,15 @@
 from pathlib import Path
 
-import numpy as np
+import chess
 import onnxruntime as ort
-from chess import Board
 
-from beast.heuristics.heuristic import Heuristic
+from beast.neural_networks import NetFactory
+
+from .infra import Heuristic
 
 
 class NeuralNetwork(Heuristic):
-    """Neural network versions for Beast versions 2.0+."""
+    """Old neural network versions for Beast versions <2.0."""
 
     def __init__(
         self,
@@ -19,35 +20,24 @@ class NeuralNetwork(Heuristic):
     ) -> None:
         """
         Constructor.
-        :param model_file: path to a neural network file
-        :param fifty_moves_rule: should enforce 50 move rule
+        :param model_file: the path to a neural network file
+        :param fifty_moves_rule: should enforce the 50-move rule
         :param syzygy_path: path to syzygy tablebases
         :param syzygy_probe_limit: limit for the maximum number of pieces in the tablebases
         """
         super().__init__(fifty_moves_rule, syzygy_path, syzygy_probe_limit)
         self._session = ort.InferenceSession(model_file)
+        self._nn = NetFactory.from_string(
+            self._session.get_modelmeta().custom_metadata_map.get("model_version")
+        )
 
-    @staticmethod
-    def use_quiescence() -> bool:
-        """
-        Whether to use quiescence search with this heuristic.
-        :return: use quiescence or not
-        """
-        return False
-
-    def _evaluate_internal(self, _board: Board) -> float:  # noqa: PLR6301
+    def _evaluate_internal(self, board: chess.Board) -> float:
         """
         Evaluate board and return value in centi-pawns.
-        :param _board: chess board representation
-        :return: NotImplemented
+        :param board: chess board representation
+        :return: board evaluation
         """
-        return NotImplemented("New neural network implementation is not yet finished.")
-
-    @staticmethod
-    def _fen_to_input(_fen: str) -> np.ndarray:
-        """
-        Convert board position in FEN notation to input structure for neural network training.
-        :param _fen: string representing board position
-        :return: NotImplementedError
-        """
-        return NotImplemented("New neural network implementation is not yet finished.")
+        output = self._session.run(
+            None, {self._session.get_inputs()[0].name: [self._nn.fen_to_input(board.fen())]}
+        )
+        return round(output[0][0][0] * 2000)

@@ -1,7 +1,6 @@
 from chess import BISHOP, BLACK, KNIGHT, PAWN, QUEEN, ROOK, WHITE, Board, SquareSet
 
-from beast.heuristics.heuristic import Heuristic
-from beast.heuristics.piece_values import PieceValues
+from .infra import Heuristic, PieceValues
 
 
 class ClassicalHeuristic(Heuristic):
@@ -30,7 +29,7 @@ class ClassicalHeuristic(Heuristic):
     def use_quiescence() -> bool:
         """
         Whether to use quiescence search with this heuristic.
-        :return: use quiescence or not
+        :return: Use quiescence or not
         """
         return True
 

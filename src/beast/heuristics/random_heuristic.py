@@ -2,19 +2,11 @@ from random import randint
 
 from chess import Board
 
-from beast.heuristics.heuristic import Heuristic
+from .infra import Heuristic
 
 
 class RandomHeuristic(Heuristic):
     """Random heuristic."""
-
-    @staticmethod
-    def use_quiescence() -> bool:
-        """
-        Whether to use quiescence search with this heuristic.
-        :return: use quiescence or not
-        """
-        return False
 
     def evaluate(self, board: Board) -> float:
         """
