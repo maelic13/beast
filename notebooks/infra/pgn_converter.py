@@ -1,8 +1,11 @@
+from collections.abc import Callable
 from functools import partial
 from multiprocessing import Pool, cpu_count, current_process
 from pathlib import Path
 from time import time
+from typing import Any
 
+import numpy as np
 from chess import Board
 from chess.engine import Limit, SimpleEngine
 from chess.pgn import Game, read_game
@@ -110,6 +113,34 @@ class PgnConverter:
         print(f"Loading took {int(time() - start)} seconds.")
         print(f"Loaded {len(positions)} positions.")
         return positions
+
+    @classmethod
+    def load_training_data_from_file(
+        cls, file_path: Path, get_input: Callable[[str], Any]
+    ) -> tuple[np.ndarray, np.ndarray]:
+        print(f"Loading training data from {file_path}...")
+        start = time()
+
+        with open(file_path, encoding="utf-8") as file:
+            line_count = sum(1 for _ in file)
+
+        with open(file_path, encoding="utf-8") as file:
+            first_line = file.readline().strip()
+            fen = first_line.strip().split("\t")[0]
+            input_shape = get_input(fen).shape
+
+        inputs = np.empty((line_count, *input_shape), dtype=np.float32)
+        evaluations = np.empty(line_count, dtype=np.float32)
+
+        with open(file_path, encoding="utf-8") as file:
+            for i, line in enumerate(file):
+                position, evaluation = line.strip().split("\t")
+                inputs[i] = get_input(position)
+                evaluations[i] = float(evaluation)
+
+        print(f"Loading took {int(time() - start)} seconds.")
+        print(f"Loaded {len(evaluations)} training data.")
+        return inputs, evaluations
 
     @classmethod
     def _log_extracting_progress(
