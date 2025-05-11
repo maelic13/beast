@@ -23,9 +23,9 @@ class Heuristic(ABC):
         self._syzygy_probe_limit = syzygy_probe_limit
 
         # precalculate win and loss values (speed-up of heuristic)
-        self._draw_value = self.win_probability_to_pawn_advantage(0.5) * 100  # [cp]
-        self._loss_value = self.win_probability_to_pawn_advantage(0.0) * 100  # [cp]
-        self._win_value = self.win_probability_to_pawn_advantage(1.0) * 100  # [cp]
+        self._draw_value = self.probability_to_centipawn(0.5) * 100  # [cp]
+        self._loss_value = self.probability_to_centipawn(0.0) * 100  # [cp]
+        self._win_value = self.probability_to_centipawn(1.0) * 100  # [cp]
 
     def evaluate(self, board: Board) -> float:
         """
@@ -61,16 +61,16 @@ class Heuristic(ABC):
         return int(tablebase_evaluation + self._evaluate_internal(board))
 
     @staticmethod
-    def pawn_advantage_to_win_probability(pawn_advantage: float) -> float:
+    def centipawn_to_probability(centipawn: int) -> float:
         """
         Calculate winning probability given pawn advantage.
-        :param pawn_advantage: advantage in pawns
+        :param centipawn: position value in centipawns
         :return: winning probability
         """
-        return 1 / (1 + 10 ** (-pawn_advantage / 4))
+        return 1 / (1 + 10 ** (-(centipawn / 100) / 4))
 
     @staticmethod
-    def win_probability_to_pawn_advantage(win_probability: float) -> float:
+    def probability_to_centipawn(win_probability: float) -> int:
         """
         Calculate pawn advantage given winning probability.
         :param win_probability: win probability (0.0 to 1.0)
@@ -80,7 +80,7 @@ class Heuristic(ABC):
             win_probability = 1e-9
         elif win_probability >= 1:
             win_probability = 1.0 - 1e-9
-        return 4 * log10(win_probability / (1 - win_probability))
+        return int(4 * log10(win_probability / (1 - win_probability)) * 100)
 
     @abstractmethod
     def _evaluate_internal(self, board: Board) -> float:
