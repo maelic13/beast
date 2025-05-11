@@ -24,8 +24,8 @@ class Heuristic(ABC):
 
         # precalculate win and loss values (speed-up of heuristic)
         self._draw_value = self.probability_to_centipawn(0.5) * 100  # [cp]
-        self._loss_value = self.probability_to_centipawn(0.0) * 100  # [cp]
-        self._win_value = self.probability_to_centipawn(1.0) * 100  # [cp]
+        self._loss_value = 2 * self.probability_to_centipawn(0.0) * 100  # [cp]
+        self._win_value = 2 * self.probability_to_centipawn(1.0) * 100  # [cp]
 
     def evaluate(self, board: Board) -> float:
         """

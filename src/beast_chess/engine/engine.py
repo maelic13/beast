@@ -168,7 +168,7 @@ class Engine:
         if board.is_game_over():
             return self._heuristic.evaluate(board), []
         if depth == 0:
-            return self._quiescence(board, alpha, beta), []
+            return self._quiescence(board, alpha, beta)
 
         best_moves: list[Move] = []
         for move in self._order_moves(board, board.legal_moves):
@@ -176,21 +176,21 @@ class Engine:
             evaluation, moves = self._negamax(board, depth - 1, -beta, -alpha)
             board.pop()
 
-            evaluation *= -1
             moves.insert(0, move)
+            evaluation *= -1
 
             if evaluation >= beta:
                 return beta, []
-            if evaluation > alpha:
+            if evaluation > alpha or (evaluation == alpha and len(moves) < len(best_moves)):
                 alpha = evaluation
                 best_moves = moves
 
         return alpha, best_moves
 
-    def _quiescence(self, board: Board, alpha: float, beta: float) -> float:
+    def _quiescence(self, board: Board, alpha: float, beta: float) -> tuple[float, list[Move]]:
         """
         Quiescence search checks all possible captures and checks to ensure not returning
-        evaluation of position in-between captures or lost after simple check.
+        evaluation of position in-between captures or lost after a simple check.
         :param board: chess board representation
         :param alpha: search parameter alpha
         :param beta: search parameter beta
@@ -202,15 +202,16 @@ class Engine:
         evaluation = self._heuristic.evaluate(board)
 
         if evaluation >= beta:
-            return beta
+            return beta, []
 
         use_delta_pruning = len(board.piece_map()) > 8
         if use_delta_pruning and evaluation < alpha - PieceValues.QUEEN_VALUE:
-            return alpha
+            return alpha, []
 
         alpha = max(alpha, evaluation)
 
         # expansion and search
+        best_moves: list[Move] = []
         for move in self._get_captures_and_checks(board):
             if use_delta_pruning and board.is_capture(move):
                 captured_piece = (
@@ -221,15 +222,20 @@ class Engine:
                     continue
 
             board.push(move)
-            score = -self._quiescence(board, -beta, -alpha)
+            score, moves = self._quiescence(board, -beta, -alpha)
             board.pop()
             self._nodes_searched += 1
 
-            if score >= beta:
-                return beta
-            alpha = max(alpha, score)
+            score *= -1
+            moves.insert(0, move)
 
-        return alpha
+            if score >= beta:
+                return beta, []
+            if evaluation > alpha or (evaluation == alpha and len(moves) < len(best_moves)):
+                alpha = score
+                best_moves = moves
+
+        return alpha, best_moves
 
     def _get_captures_and_checks(self, board: Board) -> Iterator[Move]:
         """

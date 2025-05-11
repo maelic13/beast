@@ -125,7 +125,7 @@ class SearchOptions:
         if "infinite" in args:
             self.depth = Constants.INFINITE_DEPTH
 
-    def set_option(self, args: list[str]) -> None:
+    def set_option(self, args: list[str]) -> None:  # noqa: C901
         """
         Set the search option, not changed until a specific action (no reset).
         :param args: arguments of setoption command
