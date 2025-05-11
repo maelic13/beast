@@ -4,18 +4,32 @@ UCI compatible chess engine with neural network support
 - 50-moves rule, 3-fold repetition
 - infinite analysis mode
 - time management
-- 4 types of heuristic (classic, neural network, legacy neural network, random play)
+- Three types of heuristic (classic, neural network, random play)
 - syzygy tablebases support
 
 # How to use
-Beast can be run
-- from python console via src/beast/beast.py
-- using exe runner file
 
-The exe runner can be connected to your preferred GUI, communicating via UCI protocol, 
-but has to be compiled from C#, C++ or Rust code.
+## Use latest released executable
+- [Latest release](https://github.com/maelic13/beast/releases/latest)  
+- [All releases](https://github.com/maelic13/beast/releases)
 
-## Prerequisites
-Install Python 3.12 from https://python.org/ website. 
+## Chess engine in the Python console
+1. Create a Python 3.12 virtual environment (or use system Python)
+2. Activate the environment
+3. ```pip install .```
+4. ```beast```
 
-Install python virtual environment using **pyproject.toml**.
+## Build latest dev chess engine executable
+1. Create a Python 3.12 virtual environment (or use system Python)
+2. Activate the environment
+3. ```pip install .[build]```
+4. ```pyinstaller --clean --onefile --name beast --optimize=2 src/beast_chess/main.py```
+5. Executable will be created in /dist
+
+## Train your own neural network for Beast
+1. Create a Python 3.12 virtual environment (or use system Python)
+2. Activate the environment
+3. ```pip install .[dev]```, or ```pip install .[dev,cuda]```
+for systems with CUDA capable GPU. On windows, you have to use WSL2,
+see [install tensorflow](https://www.tensorflow.org/install/pip#windows-wsl2).
+4. Use notebooks with this environment, modify to your liking

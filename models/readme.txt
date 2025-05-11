@@ -1,6 +1,5 @@
-Strongest model: v2-2.onnx
+Strongest model: v1_model2-100-2
 
-Model versions:
+Model versions by input:
 v1: legacy
-v2: legacy
-v3: current
+v2: current
