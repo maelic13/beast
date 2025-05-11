@@ -71,7 +71,8 @@ class SearchOptions:
             f"default {options.heuristic_type.name.lower()} "
             f"var {' var '.join(h.name.lower() for h in HeuristicType)}",
             f"option name ModelFile type string default {options.model_file or '<empty>'!s} ",
-            f"option name Syzygy50MoveRule type check default {options.fifty_moves_rule}",
+            f"option name Syzygy50MoveRule type check default "
+            f"{str(options.fifty_moves_rule).lower()}",
             f"option name SyzygyPath type string "
             f"default {str(options.syzygy_path) if options.syzygy_path else '<empty>'}",
             f"option name SyzygyProbeLimit type spin default {options.syzygy_probe_limit} "
@@ -130,11 +131,17 @@ class SearchOptions:
         :param args: arguments of setoption command
         """
         option_name = args[1].lower()
-        value = " ".join(args[3:]).lower()
+        value = " ".join(args[3:])
 
         match option_name:
             case "syzygy50moverule":
-                self.fifty_moves_rule = value == "true"
+                match value.lower():
+                    case "true":
+                        self.fifty_moves_rule = True
+                    case "false":
+                        self.fifty_moves_rule = False
+                    case _:
+                        print("Invalid syzygy 50 move rule.")
             case "heuristic":
                 try:
                     self.heuristic_type = HeuristicType.from_str(value)
@@ -147,7 +154,10 @@ class SearchOptions:
                 path = Path(value.replace("\\", "/"))
                 self.syzygy_path = path if path.exists() else None
             case "syzygyprobelimit":
-                self.syzygy_probe_limit = int(value)
+                try:
+                    self.syzygy_probe_limit = int(value)
+                except ValueError:
+                    print("Invalid syzygy probe limit.")
 
     @property
     def time_options(self) -> dict[str, int]:

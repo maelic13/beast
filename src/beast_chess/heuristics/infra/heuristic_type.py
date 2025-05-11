@@ -17,7 +17,7 @@ class HeuristicType(Enum):
         :param string: identifier
         :return: heuristic type
         """
-        match string:
+        match string.lower():
             case "classical":
                 return HeuristicType.CLASSICAL
             case "neural_network":
