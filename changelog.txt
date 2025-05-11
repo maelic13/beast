@@ -1,3 +1,15 @@
+v3.0.2
+- correct model version readout from metadata
+- paths to files on linux systems
+
+v3.0.1
+- switch to modern package format with pyproject.toml
+- finish new model training code, available in /notebooks
+- better search pruning
+- include best trained models (legacy)
+- include beast.spec for executable creation
+- add logo
+
 v2.1
 - new installation script
 - switch to ONNX backend for neural networks
