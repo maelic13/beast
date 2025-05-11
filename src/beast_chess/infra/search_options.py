@@ -149,10 +149,16 @@ class SearchOptions:
                     print(err)
             case "modelfile":
                 path = Path(value.replace("\\", "/"))
-                self.model_file = path if path.exists() else None
+                if not path.exists():
+                    print("Invalid model file.")
+                    return
+                self.model_file = path
             case "syzygypath":
                 path = Path(value.replace("\\", "/"))
-                self.syzygy_path = path if path.exists() else None
+                if not path.exists():
+                    print("Invalid syzygy path.")
+                    return
+                self.syzygy_path = path
             case "syzygyprobelimit":
                 try:
                     self.syzygy_probe_limit = int(value)
