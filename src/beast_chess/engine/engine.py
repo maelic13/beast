@@ -142,7 +142,7 @@ class Engine:
 
             current_time = time() - search_started
             print(
-                f"info depth {depth} score cp {evaluation} "
+                f"info depth {depth} score cp {int(evaluation)} "
                 f"nodes {self._nodes_searched} nps {int(self._nodes_searched / current_time)} "
                 f"time {round(1000 * current_time)} "
                 f"pv {' '.join([move.uci() for move in moves])}",
@@ -190,7 +190,7 @@ class Engine:
     def _quiescence(self, board: Board, alpha: float, beta: float) -> float:
         """
         Quiescence search checks all possible captures and checks to ensure not returning
-        evaluation of position in-between captures or lost after simple check.
+        evaluation of position in-between captures or lost after a simple check.
         :param board: chess board representation
         :param alpha: search parameter alpha
         :param beta: search parameter beta
