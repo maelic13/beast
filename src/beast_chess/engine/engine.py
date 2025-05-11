@@ -199,7 +199,7 @@ class Engine:
         self._check_stop()
 
         # heuristic
-        evaluation = self._heuristic.evaluate(board)
+        evaluation = 0.95 * self._heuristic.evaluate(board)
 
         if evaluation >= beta:
             return beta
