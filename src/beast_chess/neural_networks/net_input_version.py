@@ -7,10 +7,10 @@ class NetInputVersion(Enum):
 
     @classmethod
     def from_string(cls, version_string: str) -> "NetInputVersion":
-        if version_string == cls.V1.name:
+        if version_string.lower() == cls.V1.name.lower():
             return NetInputVersion.V1
 
-        if version_string == cls.V2.name:
+        if version_string.lower() == cls.V2.name.lower():
             return NetInputVersion.V2
 
         msg = "Invalid version string identifier!"

@@ -9,8 +9,6 @@ from .infra import Heuristic
 
 
 class NeuralNetwork(Heuristic):
-    """Old neural network versions for Beast versions <2.0."""
-
     def __init__(
         self,
         model_file: Path,
