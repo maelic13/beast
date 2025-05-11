@@ -58,7 +58,7 @@ class Heuristic(ABC):
             else:
                 return self._draw_value
 
-        return int(tablebase_evaluation + self._evaluate_internal(board))
+        return tablebase_evaluation + self._evaluate_internal(board)
 
     @staticmethod
     def centipawn_to_probability(centipawn: int) -> float:
@@ -70,7 +70,7 @@ class Heuristic(ABC):
         return 1 / (1 + 10 ** (-(centipawn / 100) / 4))
 
     @staticmethod
-    def probability_to_centipawn(win_probability: float) -> int:
+    def probability_to_centipawn(win_probability: float) -> float:
         """
         Calculate pawn advantage given winning probability.
         :param win_probability: win probability (0.0 to 1.0)
@@ -80,7 +80,7 @@ class Heuristic(ABC):
             win_probability = 1e-9
         elif win_probability >= 1:
             win_probability = 1.0 - 1e-9
-        return int(4 * log10(win_probability / (1 - win_probability)) * 100)
+        return 4 * log10(win_probability / (1 - win_probability)) * 100
 
     @abstractmethod
     def _evaluate_internal(self, board: Board) -> float:
