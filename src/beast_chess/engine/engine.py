@@ -101,23 +101,29 @@ class Engine:
         """
         self._timeout.clear()
 
-        if not search_options.has_time_options:
-            # do not start the timer
-            return
+        match (search_options.board.turn, *search_options.time_options.values()):
+            case (_, 0, 0, 0, 0, 0):
+                return
+            case (_, move_time, _, _, _, _) if move_time > 0:
+                time_for_move = move_time
+            case (True, _, white_time, 0, _, _) if white_time > 0:
+                time_for_move = 0.05 * (white_time - Constants.TIME_FLEX)
+            case (True, _, white_time, white_increment, _, _) if white_time > 0:
+                time_for_move = min(
+                    0.1 * white_time + white_increment - Constants.TIME_FLEX,
+                    white_time - Constants.TIME_FLEX,
+                )
+            case (False, _, _, _, black_time, 0) if black_time > 0:
+                time_for_move = 0.05 * (black_time - Constants.TIME_FLEX)
+            case (False, _, _, _, black_time, black_increment) if black_time > 0:
+                time_for_move = min(
+                    0.1 * black_time + black_increment - Constants.TIME_FLEX,
+                    black_time - Constants.TIME_FLEX,
+                )
+            case _:
+                raise RuntimeError("Incorrect time options.")
 
-        time_for_move: float | None = None
-        if search_options.move_time != 0:
-            time_for_move = (search_options.move_time - Constants.TIME_FLEX) / 1000.0
-        if search_options.board.turn and search_options.white_time != 0:
-            time_for_move = (0.2 * search_options.white_time - Constants.TIME_FLEX) / 1000.0
-        if not search_options.board.turn and search_options.black_time != 0:
-            time_for_move = (0.2 * search_options.black_time - Constants.TIME_FLEX) / 1000.0
-
-        if time_for_move is None:
-            # wrong time options, do not start timer
-            return
-
-        timer = Timer(time_for_move, self._timeout.set)
+        timer = Timer(time_for_move / 1000.0, self._timeout.set)
         timer.start()
 
     def _search(self, board: Board, max_depth: float) -> None:

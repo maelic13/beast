@@ -179,11 +179,6 @@ class SearchOptions:
             "binc": self.black_increment,
         }
 
-    @property
-    def has_time_options(self) -> bool:
-        """Information whether any time option is present."""
-        return any(option != 0 for option in self.time_options.values())
-
     def reset_temporary_parameters(self) -> None:
         """Reset temporary parameters only."""
         self.move_time = 0
