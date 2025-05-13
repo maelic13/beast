@@ -188,7 +188,13 @@ class Engine:
         best_moves: list[Move] = []
         for move in self._order_moves(board, board.legal_moves):
             board.push(move)
-            evaluation, moves = self._negamax(board, depth - 1, -beta, -alpha)
+            if board.is_repetition() or (
+                self._heuristic.fifty_moves_rule and board.is_fifty_moves()
+            ):
+                evaluation = self._heuristic.draw_value
+                moves = []
+            else:
+                evaluation, moves = self._negamax(board, depth - 1, -beta, -alpha)
             board.pop()
 
             evaluation *= -1

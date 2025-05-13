@@ -13,10 +13,7 @@ class SearchOptions:
     Search options for engine.
 
     board: chess board representation
-    heuristic_type: what heuristic to use for evaluation
-        - classical
-        - legacy_neural_network
-        - neural_network
+    heuristic_type: what heuristic to use for evaluation, see HeuristicType
 
     move_time: time for current move in milliseconds
     white_time: white's remaining time in milliseconds

@@ -22,4 +22,4 @@ class RandomHeuristic(Heuristic):
         :param _board: chess board representation
         :return: board evaluation
         """
-        return randint(int(self._loss_value), int(self._win_value))
+        return randint(int(self.loss_value), int(self.win_value))

@@ -18,14 +18,14 @@ class Heuristic(ABC):
         :param syzygy_path: path to syzygy tablebases
         :param syzygy_probe_limit: limit for the maximum number of pieces in the tablebases
         """
-        self._fifty_moves_rule = fifty_moves_rule
+        self.fifty_moves_rule = fifty_moves_rule
         self._syzygy_path = syzygy_path
         self._syzygy_probe_limit = syzygy_probe_limit
 
         # precalculate win and loss values (speed-up of heuristic)
-        self._draw_value = self.probability_to_centipawn(0.5) * 100  # [cp]
-        self._loss_value = self.probability_to_centipawn(0.0) * 100  # [cp]
-        self._win_value = self.probability_to_centipawn(1.0) * 100  # [cp]
+        self.draw_value = self.probability_to_centipawn(0.5) * 100  # [cp]
+        self.loss_value = self.probability_to_centipawn(0.0) * 100  # [cp]
+        self.win_value = self.probability_to_centipawn(1.0) * 100  # [cp]
 
     def evaluate(self, board: Board) -> float:
         """
@@ -35,13 +35,8 @@ class Heuristic(ABC):
         """
         if board.is_game_over():
             if board.is_checkmate():
-                return self._loss_value
-            return self._draw_value
-
-        if (
-            self._fifty_moves_rule and board.can_claim_fifty_moves()
-        ) or board.can_claim_threefold_repetition():
-            return self._draw_value
+                return self.loss_value
+            return self.draw_value
 
         # tablebase probing
         tablebase_evaluation = 0.0
@@ -49,14 +44,12 @@ class Heuristic(ABC):
             with open_tablebase(self._syzygy_path) as tablebase:
                 wdl = tablebase.get_wdl(board)
 
-            if (self._fifty_moves_rule and wdl == 2) or (not self._fifty_moves_rule and wdl == 1):
-                tablebase_evaluation = self._win_value
-            elif (self._fifty_moves_rule and wdl == -2) or (
-                not self._fifty_moves_rule and wdl == -1
-            ):
-                tablebase_evaluation = self._loss_value
+            if (self.fifty_moves_rule and wdl == 2) or (not self.fifty_moves_rule and wdl == 1):
+                tablebase_evaluation = self.win_value
+            elif (self.fifty_moves_rule and wdl == -2) or (not self.fifty_moves_rule and wdl == -1):
+                tablebase_evaluation = self.loss_value
             else:
-                return self._draw_value
+                return self.draw_value
 
         return tablebase_evaluation + self._evaluate_internal(board)
 
