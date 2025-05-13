@@ -152,7 +152,8 @@ class Engine:
             depth += 1
             try:
                 evaluation, moves = self._negamax(board, depth, float("-inf"), float("inf"))
-            except RuntimeError:
+            except RuntimeError as ex:
+                print(f"Search ended with exception: {ex!s}")
                 break
 
             current_time = time() - search_started
@@ -181,20 +182,16 @@ class Engine:
         self._nodes_searched += 1
 
         if board.is_game_over():
-            return self._heuristic.evaluate(board), []
+            return self._heuristic.evaluate_result(board), []
+        if board.is_repetition() or board.is_fifty_moves():
+            return 0.0, []
         if depth == 0:
             return self._quiescence(board, alpha, beta), []
 
         best_moves: list[Move] = []
         for move in self._order_moves(board, board.legal_moves):
             board.push(move)
-            if board.is_repetition() or (
-                self._heuristic.fifty_moves_rule and board.is_fifty_moves()
-            ):
-                evaluation = self._heuristic.draw_value
-                moves = []
-            else:
-                evaluation, moves = self._negamax(board, depth - 1, -beta, -alpha)
+            evaluation, moves = self._negamax(board, depth - 1, -beta, -alpha)
             board.pop()
 
             evaluation *= -1
@@ -219,8 +216,13 @@ class Engine:
         """
         self._check_stop()
 
+        if board.is_game_over():
+            return self._heuristic.evaluate_result(board)
+        if board.is_repetition() or board.is_fifty_moves():
+            return 0.0
+
         # heuristic
-        evaluation = 0.95 * self._heuristic.evaluate(board)
+        evaluation = 0.95 * self._heuristic.evaluate_position(board)
 
         if evaluation >= beta:
             return beta
@@ -256,7 +258,7 @@ class Engine:
         """
         Check for captures and checks for quiescence search.
         :param board: chess board representation
-        :return: all moves that either capture a piece, or give check from current position
+        :return: all moves that either capture a piece or give a check from the current position
         """
         return self._order_moves(
             board,

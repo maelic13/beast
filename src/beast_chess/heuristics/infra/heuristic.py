@@ -27,7 +27,16 @@ class Heuristic(ABC):
         self.loss_value = self.probability_to_centipawn(0.0) * 100  # [cp]
         self.win_value = self.probability_to_centipawn(1.0) * 100  # [cp]
 
-    def evaluate(self, board: Board) -> float:
+    def evaluate_result(self, board: Board) -> float:
+        if board.outcome().winner is None:
+            return self.draw_value
+
+        if board.turn is not board.outcome().winner:
+            return self.loss_value
+
+        return self.win_value
+
+    def evaluate_position(self, board: Board) -> float:
         """
         Evaluate board and return value in centi-pawns.
         :param board: chess board representation
