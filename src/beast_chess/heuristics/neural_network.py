@@ -15,6 +15,7 @@ class NeuralNetwork(Heuristic):
         fifty_moves_rule: bool = True,  # noqa: FBT001, FBT002
         syzygy_path: str | None = None,
         syzygy_probe_limit: int = 7,
+        threads: int = 1,
     ) -> None:
         """
         Constructor.
@@ -24,7 +25,11 @@ class NeuralNetwork(Heuristic):
         :param syzygy_probe_limit: limit for the maximum number of pieces in the tablebases
         """
         super().__init__(fifty_moves_rule, syzygy_path, syzygy_probe_limit)
-        self._session = ort.InferenceSession(model_file)
+
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = threads
+        self._session = ort.InferenceSession(model_file, options)
+
         self._nn_input = NetInputFactory.from_string(
             self._session.get_modelmeta().custom_metadata_map.get("model_version")
         )

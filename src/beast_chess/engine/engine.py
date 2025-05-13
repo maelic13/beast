@@ -90,6 +90,7 @@ class Engine:
                 fifty_moves_rule=search_options.fifty_moves_rule,
                 syzygy_path=search_options.syzygy_path,
                 syzygy_probe_limit=search_options.syzygy_probe_limit,
+                threads=search_options.threads,
             )
 
         return classical_heuristic
@@ -101,7 +102,14 @@ class Engine:
         """
         self._timeout.clear()
 
-        match (search_options.board.turn, *search_options.time_options.values()):
+        match (
+            search_options.board.turn,
+            search_options.move_time,
+            search_options.white_time,
+            search_options.white_increment,
+            search_options.black_time,
+            search_options.black_increment,
+        ):
             case (_, 0, 0, 0, 0, 0):
                 return
             case (_, move_time, _, _, _, _) if move_time > 0:
@@ -121,7 +129,8 @@ class Engine:
                     black_time - Constants.TIME_FLEX,
                 )
             case _:
-                raise RuntimeError("Incorrect time options.")
+                msg = "Incorrect time options."
+                raise RuntimeError(msg)
 
         timer = Timer(time_for_move / 1000.0, self._timeout.set)
         timer.start()

@@ -1,3 +1,4 @@
+from multiprocessing import cpu_count
 from pathlib import Path
 
 from chess import Board
@@ -40,6 +41,7 @@ class SearchOptions:
         self.model_file: Path | None = None
         self.syzygy_path: Path | None = None
         self.syzygy_probe_limit: int = 7
+        self.threads: int = 1
 
     def __str__(self) -> str:
         return (
@@ -56,6 +58,7 @@ class SearchOptions:
             f"\tmodel file: {self.model_file}\n"
             f"\tsyzygy path: {self.syzygy_path}\n"
             f"\tsyzygy probe limit: {self.syzygy_probe_limit}\n"
+            f"\tthreads: {self.threads}\n"
             f")\n"
         )
 
@@ -77,6 +80,7 @@ class SearchOptions:
             f"default {str(options.syzygy_path) if options.syzygy_path else '<empty>'}",
             f"option name SyzygyProbeLimit type spin default {options.syzygy_probe_limit} "
             f"min 0 max 7",
+            f"option name Threads type spin default {options.threads} min 1 max {cpu_count()}",
         ]
 
     def reset(self) -> None:
@@ -125,7 +129,7 @@ class SearchOptions:
         if "infinite" in args:
             self.depth = Constants.INFINITE_DEPTH
 
-    def set_option(self, args: list[str]) -> None:  # noqa: C901
+    def set_option(self, args: list[str]) -> None:  # noqa: C901, PLR0912
         """
         Set the search option, not changed until a specific action (no reset).
         :param args: arguments of setoption command
@@ -164,20 +168,11 @@ class SearchOptions:
                     self.syzygy_probe_limit = int(value)
                 except ValueError:
                     print("Invalid syzygy probe limit.")
-
-    @property
-    def time_options(self) -> dict[str, int]:
-        """
-        Return a dictionary with time options as values and their UCI names as keys.
-        :return: time options with their UCI names.
-        """
-        return {
-            "movetime": self.move_time,
-            "wtime": self.white_time,
-            "winc": self.white_increment,
-            "btime": self.black_time,
-            "binc": self.black_increment,
-        }
+            case "threads":
+                try:
+                    self.threads = int(value)
+                except ValueError:
+                    print("Invalid thread limit.")
 
     def reset_temporary_parameters(self) -> None:
         """Reset temporary parameters only."""
