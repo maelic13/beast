@@ -31,7 +31,7 @@ class SearchOptions:
         self.white_increment: int = 0  # [ms]
         self.black_time: int = 0  # [ms]
         self.black_increment: int = 0  # [ms]
-        self.depth: float = Constants.INFINITE_DEPTH
+        self.depth: int = Constants.INFINITE_DEPTH
 
         self.fifty_moves_rule = True
         self.heuristic_type = HeuristicType.CLASSICAL

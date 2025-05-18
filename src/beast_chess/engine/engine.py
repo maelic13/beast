@@ -27,7 +27,7 @@ class Engine:
 
     def start(self) -> None:
         """
-        Start the engine process, wait for EngineCommand and search for best move when required.
+        Start the engine process, wait for EngineCommand and search for the best move when required.
         """
         while True:
             # check queue for command
@@ -135,7 +135,7 @@ class Engine:
         timer = Timer(time_for_move / 1000.0, self._timeout.set)
         timer.start()
 
-    def _search(self, board: Board, max_depth: float) -> None:
+    def _search(self, board: Board, max_depth: int) -> None:
         """
         Search for the best move and report info to stdout.
         :param board: current board representation
@@ -153,7 +153,6 @@ class Engine:
             try:
                 evaluation, moves = self._negamax(board, depth, float("-inf"), float("inf"))
             except RuntimeError as ex:
-                print(f"Search ended with exception: {ex!s}")
                 break
 
             current_time = time() - search_started
@@ -168,7 +167,7 @@ class Engine:
         print(f"bestmove {moves[0].uci()}", flush=True)
 
     def _negamax(
-        self, board: Board, depth: float, alpha: float, beta: float
+        self, board: Board, depth: int, alpha: float, beta: float
     ) -> tuple[float, list[Move]]:
         """
         Depth-first search with pruning.
@@ -182,7 +181,7 @@ class Engine:
         self._nodes_searched += 1
 
         if board.is_game_over():
-            return self._heuristic.evaluate_result(board), []
+            return self._heuristic.evaluate_result(board, depth), []
         if board.is_repetition() or board.is_fifty_moves():
             return 0.0, []
         if depth == 0:
@@ -217,12 +216,12 @@ class Engine:
         self._check_stop()
 
         if board.is_game_over():
-            return self._heuristic.evaluate_result(board)
+            return self._heuristic.evaluate_result(board, -1)
         if board.is_repetition() or board.is_fifty_moves():
             return 0.0
 
         # heuristic
-        evaluation = 0.95 * self._heuristic.evaluate_position(board)
+        evaluation = self._heuristic.evaluate_position(board)
 
         if evaluation >= beta:
             return beta

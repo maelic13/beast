@@ -5,6 +5,6 @@ class Constants:
     ENGINE_VERSION = "3.1.0"
 
     # constants
-    DEFAULT_DEPTH: float = 2
-    INFINITE_DEPTH = float("inf")
+    DEFAULT_DEPTH: int = 2
+    INFINITE_DEPTH: int = 10000
     TIME_FLEX = 100  # [ms]
