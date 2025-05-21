@@ -1,3 +1,9 @@
+v3.2.0
+- use all available time (not well, but at least use it)
+- Threads option for neural network version
+- fix repetition handling
+- fix game result evaluation
+
 v3.1.0
 - faster mate finding
 - less impact from quiescence on score
