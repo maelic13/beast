@@ -1,3 +1,6 @@
+v3.2.1
+- add windows, macos and linux arm64 executables
+
 v3.2.0
 - use all available time (not well, but at least use it)
 - Threads option for neural network version

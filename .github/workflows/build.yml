@@ -14,9 +14,18 @@ jobs:
           - os: ubuntu-latest
             os_name: linux
             arch: x64
+          - os: ubuntu-24.04-arm
+            os_name: linux
+            arch: arm64
           - os: windows-latest
             os_name: windows
             arch: x64
+          - os: windows-11-arm
+            os_name: windows
+            arch: arm64
+          - os: macos-latest
+            os_name: macos
+            arch: arm64
 
     steps:
       - name: Checkout repository
