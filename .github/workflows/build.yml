@@ -20,9 +20,9 @@ jobs:
           - os: windows-latest
             os_name: windows
             arch: x64
-          - os: windows-11-arm
-            os_name: windows
-            arch: arm64
+#          - os: windows-11-arm
+#            os_name: windows
+#            arch: arm64
           - os: macos-latest
             os_name: macos
             arch: arm64
