@@ -1,3 +1,6 @@
+v3.2.2
+- fix dependencies
+
 v3.2.1
 - add windows, macos and linux arm64 executables
 
