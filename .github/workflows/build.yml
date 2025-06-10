@@ -71,7 +71,7 @@ jobs:
           cp "dist/beast${{ matrix.ext }}" "dist/${{ steps.prepare-asset.outputs.asset_name }}"
 
       - name: Upload binary to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           files: dist/${{ steps.prepare-asset.outputs.asset_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
         run: zip -r models-${{ github.event.release.tag_name }}.zip models
 
       - name: Upload models archive to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           files: models-${{ github.event.release.tag_name }}.zip
           token: ${{ secrets.GITHUB_TOKEN }}
