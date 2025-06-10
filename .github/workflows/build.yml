@@ -13,6 +13,7 @@ jobs:
     strategy:
       matrix:
         include:
+          # Linux
           - os: ubuntu-latest
             os_name: linux
             arch: x64
@@ -21,10 +22,18 @@ jobs:
             os_name: linux
             arch: arm64
             ext: ""
+
+          # Windows
           - os: windows-latest
             os_name: windows
             arch: x64
             ext: ".exe"
+
+          # macOS
+          - os: macos-13
+            os_name: macos
+            arch: x64
+            ext: ""
           - os: macos-latest
             os_name: macos
             arch: arm64
