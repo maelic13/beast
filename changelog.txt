@@ -1,8 +1,13 @@
+v3.2.3
+- fix package starting point
+- fix macOS support (multiprocessing issue)
+- add macOS x64 target
+
 v3.2.2
 - fix dependencies
 
 v3.2.1
-- add windows, macos and linux arm64 executables
+- add windows, macOS and linux arm64 executables
 
 v3.2.0
 - use all available time (not well, but at least use it)

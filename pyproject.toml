@@ -1,6 +1,6 @@
 [project]
 name = "beast-chess"
-version = "3.2.2"
+version = "3.2.3"
 authors = [{name = "Miloslav Macůrek"}]
 description = "Beast - UCI Chess Engine"
 requires-python = ">=3.12"
