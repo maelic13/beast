@@ -10,6 +10,10 @@ class UciProtocol:
         self._search_options = SearchOptions()
 
     def uci_loop(self) -> None:  # noqa: C901
+        print(
+            f"{Constants.ENGINE_NAME} {Constants.ENGINE_VERSION} by {Constants.AUTHOR}", flush=True
+        )
+
         while True:
             full_command = input().strip().split()
             if not full_command:
