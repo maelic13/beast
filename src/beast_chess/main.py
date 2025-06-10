@@ -10,12 +10,11 @@ def start_engine(command_queue: Queue) -> None:
     Safely start the engine after creating its own new process.
     Necessary for macOS compatibility.
     """
+    print(f"{Constants.ENGINE_NAME} {Constants.ENGINE_VERSION} by {Constants.AUTHOR}")
     Engine(command_queue).start()
 
 
 if __name__ == "__main__":
-    print(f"{Constants.ENGINE_NAME} {Constants.ENGINE_VERSION} by {Constants.AUTHOR}")
-
     freeze_support()
     queue = Queue()
     Process(target=start_engine, args=(queue,), daemon=True).start()
