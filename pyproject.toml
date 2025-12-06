@@ -1,10 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "beast-chess"
 version = "3.2.3"
-authors = [{name = "Miloslav Macůrek"}]
+authors = [{name = "Miloslav Macurek"}]
 description = "Beast - UCI Chess Engine"
 requires-python = ">=3.12"
-license = "GPL-3.0-or-later"
+license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
 
 dependencies = [
