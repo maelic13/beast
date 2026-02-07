@@ -7,7 +7,7 @@ name = "beast-chess"
 version = "3.2.3"
 authors = [{name = "Miloslav Macurek"}]
 description = "Beast - UCI Chess Engine"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
 
