@@ -1,4 +1,4 @@
-from chess import BISHOP, KNIGHT, PAWN, QUEEN, ROOK
+from chess import BISHOP, KNIGHT, PAWN, QUEEN, ROOK, KING
 
 
 class PieceValues:
@@ -7,10 +7,11 @@ class PieceValues:
     """
 
     PAWN_VALUE = 100
-    KNIGHT_VALUE = 350
-    BISHOP_VALUE = 370
-    ROOK_VALUE = 550
-    QUEEN_VALUE = 950
+    KNIGHT_VALUE = 320
+    BISHOP_VALUE = 330
+    ROOK_VALUE = 500
+    QUEEN_VALUE = 900
+    KING_VALUE = 0
 
     @classmethod
     def as_dict(cls) -> dict[int, int]:
@@ -24,4 +25,5 @@ class PieceValues:
             BISHOP: cls.BISHOP_VALUE,
             ROOK: cls.ROOK_VALUE,
             QUEEN: cls.QUEEN_VALUE,
+            KING: cls.KING_VALUE,
         }
