@@ -2,7 +2,7 @@ class Constants:
     # engine info
     AUTHOR = "Miloslav Macurek"
     ENGINE_NAME = "Beast"
-    ENGINE_VERSION = "3.2.3"
+    ENGINE_VERSION = "3.2.4"
 
     # constants
     DEFAULT_DEPTH: int = 2

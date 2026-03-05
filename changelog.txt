@@ -1,3 +1,7 @@
+v3.2.4
+- fix classical evaluation king bonus
+- fix classical evaluation bishop bonus
+
 v3.2.3
 - fix package starting point
 - fix macOS support (multiprocessing issue)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beast-chess"
-version = "3.2.3"
+version = "3.2.4"
 authors = [{name = "Miloslav Macurek"}]
 description = "Beast - UCI Chess Engine"
 requires-python = ">=3.12"
