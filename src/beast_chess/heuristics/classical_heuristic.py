@@ -91,8 +91,8 @@ class ClassicalHeuristic(Heuristic):
         bq_bonus = self._queen_bonus(b_queens, w_king)
 
         # Kings
-        wki_bonus = self._king_bonus(w_king, b_king, no_queen=bool(b_queens))
-        bki_bonus = self._king_bonus(b_king, w_king, no_queen=bool(w_queens))
+        wki_bonus = self._king_bonus(w_king, b_king, queens_on_board=bool(b_queens))
+        bki_bonus = self._king_bonus(b_king, w_king, queens_on_board=bool(w_queens))
 
         # Add bonuses to eval
         evaluation += (
@@ -178,7 +178,7 @@ class ClassicalHeuristic(Heuristic):
 
             # distance from king bonus
             b_bonus += self._distance_from_king_bonus(
-                bishop_position, king_position, self.KNIGHT_DISTANCE_WEIGHT
+                bishop_position, king_position, self.BISHOP_DISTANCE_WEIGHT
             )
 
         return b_bonus
@@ -226,16 +226,18 @@ class ClassicalHeuristic(Heuristic):
 
         return q_bonus
 
-    def _king_bonus(self, king_position: int, opponents_king: int, *, no_queen: bool) -> int:
+    def _king_bonus(self, king_position: int, opponents_king: int, *, queens_on_board: bool) -> int:
         """
         Evaluation bonus for positions of king on board.
         :param king_position: king's position on board
         :param opponents_king: opponent king's position on board
-        :param no_queen: information about the presence of opponent's queens on board
+        :param queens_on_board: information about the presence of opponent's queens on board
         :return: evaluation bonus
         """
         k_bonus = 0
-        king_center_weight = self.KING_CENTER_WEIGHT if no_queen else -self.KING_CENTER_WEIGHT
+        king_center_weight = (
+            self.KING_CENTER_WEIGHT if not queens_on_board else -self.KING_CENTER_WEIGHT
+        )
 
         # occupying center bonus
         k_bonus += self._occupying_center_bonus(king_position, king_center_weight)

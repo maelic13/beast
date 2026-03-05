@@ -152,7 +152,7 @@ class Engine:
             depth += 1
             try:
                 evaluation, moves = self._negamax(board, depth, float("-inf"), float("inf"))
-            except RuntimeError as ex:
+            except RuntimeError:
                 break
 
             current_time = time() - search_started
