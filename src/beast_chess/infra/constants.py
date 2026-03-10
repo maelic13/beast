@@ -1,8 +1,11 @@
+from beast_chess import __version__
+
+
 class Constants:
     # engine info
     AUTHOR = "Miloslav Macurek"
     ENGINE_NAME = "Beast"
-    ENGINE_VERSION = "3.2.4"
+    ENGINE_VERSION = __version__
 
     # constants
     DEFAULT_DEPTH: int = 2
