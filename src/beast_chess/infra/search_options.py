@@ -131,8 +131,13 @@ class SearchOptions:
         Set the search option, not changed until a specific action (no reset).
         :param args: arguments of setoption command
         """
-        option_name = args[1].lower()
-        value = " ".join(args[3:])
+        try:
+            value_index = args.index("value")
+            option_name = " ".join(args[1:value_index]).strip().removeprefix("name ").lower()
+            value = " ".join(args[value_index + 1 :]).strip()
+        except ValueError:
+            option_name = " ".join(args[1:]).strip().removeprefix("name ").lower()
+            value = ""
 
         match option_name:
             case "syzygy50moverule":
@@ -143,7 +148,7 @@ class SearchOptions:
                         self.fifty_moves_rule = False
                     case _:
                         print("Invalid syzygy 50 move rule.")
-            case "heuristic":
+            case "heuristic" | "heuristic type":
                 try:
                     self.heuristic_type = HeuristicType.from_str(value)
                 except RuntimeError as err:

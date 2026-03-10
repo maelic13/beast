@@ -1,5 +1,6 @@
 import operator
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from multiprocessing import Event, Queue
 from random import choice
 from threading import Timer
@@ -18,18 +19,32 @@ from beast_chess.heuristics import (
 from beast_chess.infra import Constants, EngineCommand, SearchOptions
 
 
+@dataclass(slots=True)
+class TranspositionEntry:
+    depth: int
+    score: float
+    bound: str
+    best_move: Move | None
+
+
 class Engine:
     def __init__(self, queue: Queue) -> None:
         self._heuristic: Heuristic | None = None
         self._nodes_searched = 0
         self._queue = queue
+        self._quit_requested = False
+        self._search_timer: Timer | None = None
         self._timeout = Event()
+        self._tt: dict[tuple[object, ...], TranspositionEntry] = {}
 
     def start(self) -> None:
         """
         Start the engine process, wait for EngineCommand and search for the best move when required.
         """
         while True:
+            if self._quit_requested:
+                break
+
             # check queue for command
             command: EngineCommand = self._queue.get()
 
@@ -41,6 +56,8 @@ class Engine:
             self._heuristic = self._choose_heuristic(command.search_options)
             self._start_timer(command.search_options)
             self._search(command.search_options.board, command.search_options.depth)
+            if self._quit_requested:
+                break
 
     def _check_stop(self) -> None:
         """
@@ -53,10 +70,16 @@ class Engine:
             msg = "Time-out."
             raise RuntimeError(msg)
 
+        if self._quit_requested:
+            msg = "Quit requested."
+            raise RuntimeError(msg)
+
         if self._queue.empty():
             return
 
         command = self._queue.get_nowait()
+        if command.quit:
+            self._quit_requested = True
         if command.stop or command.quit:
             msg = f"Command: stop - {command.stop}, quit - {command.quit}"
             raise RuntimeError(msg)
@@ -101,6 +124,9 @@ class Engine:
         :param search_options: search parameters
         """
         self._timeout.clear()
+        if self._search_timer is not None:
+            self._search_timer.cancel()
+            self._search_timer = None
 
         match (
             search_options.board.turn,
@@ -132,8 +158,8 @@ class Engine:
                 msg = "Incorrect time options."
                 raise RuntimeError(msg)
 
-        timer = Timer(time_for_move / 1000.0, self._timeout.set)
-        timer.start()
+        self._search_timer = Timer(time_for_move / 1000.0, self._timeout.set)
+        self._search_timer.start()
 
     def _search(self, board: Board, max_depth: int) -> None:
         """
@@ -141,9 +167,13 @@ class Engine:
         :param board: current board representation
         :param max_depth: limit for depth of iterative search
         """
-        # start with a random move choice, to be used in case of timeout before
-        # the first depth is reached
-        moves: list[Move] = [choice(list(board.legal_moves))]
+        legal_moves = list(board.legal_moves)
+        if not legal_moves:
+            print("bestmove 0000", flush=True)
+            return
+
+        # Start with a legal move in case search stops before depth 1 completes.
+        moves: list[Move] = [choice(legal_moves)]
         depth = 0
         search_started = time() - 0.0001
         self._nodes_searched = 0
@@ -164,6 +194,9 @@ class Engine:
                 flush=True,
             )
 
+        if self._search_timer is not None:
+            self._search_timer.cancel()
+            self._search_timer = None
         print(f"bestmove {moves[0].uci()}", flush=True)
 
     def _negamax(
@@ -185,24 +218,45 @@ class Engine:
         if board.is_repetition() or board.is_fifty_moves():
             return 0.0, []
         if depth == 0:
-            return self._quiescence(board, alpha, beta), []
+            if getattr(self._heuristic, "use_quiescence", lambda: True)():
+                return self._quiescence(board, alpha, beta), []
+            return self._heuristic.evaluate_position(board), []
 
+        original_alpha = alpha
+        best_score = float("-inf")
         best_moves: list[Move] = []
-        for move in self._order_moves(board, board.legal_moves):
+        tt_entry = self._probe_tt(board, depth, alpha, beta)
+        if tt_entry is not None:
+            return tt_entry
+
+        tt_move = self._tt.get(self._position_key(board))
+        for move in self._order_moves(
+            board,
+            board.legal_moves,
+            hash_move=tt_move.best_move if tt_move is not None else None,
+        ):
             board.push(move)
             evaluation, moves = self._negamax(board, depth - 1, -beta, -alpha)
             board.pop()
 
             evaluation *= -1
             moves.insert(0, move)
-
-            if evaluation >= beta:
-                return beta, []
-            if evaluation > alpha:
-                alpha = evaluation
+            if evaluation > best_score:
+                best_score = evaluation
                 best_moves = moves
 
-        return alpha, best_moves
+            if evaluation >= beta:
+                self._store_tt(board, depth, evaluation, "lower", move)
+                return evaluation, moves
+            if evaluation > alpha:
+                alpha = evaluation
+
+        if not best_moves:
+            return alpha, []
+
+        bound = "exact" if alpha > original_alpha else "upper"
+        self._store_tt(board, depth, alpha, bound, best_moves[0])
+        return best_score, best_moves
 
     def _quiescence(self, board: Board, alpha: float, beta: float) -> float:
         """
@@ -220,25 +274,34 @@ class Engine:
         if board.is_repetition() or board.is_fifty_moves():
             return 0.0
 
-        # heuristic
-        evaluation = self._heuristic.evaluate_position(board)
+        in_check = board.is_check()
+        best_score = float("-inf")
 
-        if evaluation >= beta:
-            return beta
+        use_delta_pruning = False
+        evaluation = float("-inf")
 
-        use_delta_pruning = len(board.piece_map()) > 8
-        if use_delta_pruning and evaluation < alpha - PieceValues.QUEEN_VALUE:
-            return alpha
+        if in_check:
+            moves = self._order_moves(board, board.legal_moves)
+        else:
+            evaluation = self._heuristic.evaluate_position(board)
+            best_score = evaluation
 
-        alpha = max(alpha, evaluation)
+            if evaluation >= beta:
+                return evaluation
 
-        # expansion and search
-        for move in self._get_captures_and_checks(board):
+            use_delta_pruning = len(board.piece_map()) > 8
+            if use_delta_pruning and evaluation < alpha - PieceValues.QUEEN_VALUE:
+                return evaluation
+
+            alpha = max(alpha, evaluation)
+            moves = self._get_quiescence_moves(board)
+
+        for move in moves:
             if use_delta_pruning and board.is_capture(move):
                 captured_piece = (
                     PAWN if board.is_en_passant(move) else board.piece_type_at(move.to_square)
                 )
-                piece_value = PieceValues.as_dict().get(captured_piece) + 200
+                piece_value = PieceValues.as_dict().get(captured_piece, 0) + 200
                 if evaluation + piece_value < alpha:
                     continue
 
@@ -246,47 +309,80 @@ class Engine:
             score = -self._quiescence(board, -beta, -alpha)
             board.pop()
             self._nodes_searched += 1
+            best_score = max(best_score, score)
 
             if score >= beta:
-                return beta
+                return score
             alpha = max(alpha, score)
 
-        return alpha
+        return best_score if best_score != float("-inf") else alpha
 
-    def _get_captures_and_checks(self, board: Board) -> Iterator[Move]:
+    def _get_quiescence_moves(self, board: Board) -> Iterator[Move]:
         """
-        Check for captures and checks for quiescence search.
+        Generate quiescence moves.
         :param board: chess board representation
-        :return: all moves that either capture a piece or give a check from the current position
+        :return: tactical moves from the current position
         """
         return self._order_moves(
             board,
             iter(
                 move
                 for move in board.legal_moves
-                if board.is_capture(move) or board.gives_check(move)
+                if board.is_capture(move) or move.promotion
             ),
         )
 
     @staticmethod
-    def _order_moves(board: Board, moves: Iterable[Move]) -> Iterator[Move]:
+    def _position_key(board: Board) -> tuple[object, ...]:
+        return board._transposition_key()
+
+    def _probe_tt(
+        self, board: Board, depth: int, alpha: float, beta: float
+    ) -> tuple[float, list[Move]] | None:
+        entry = self._tt.get(self._position_key(board))
+        if entry is None or entry.depth < depth:
+            return None
+
+        if entry.bound == "exact":
+            return entry.score, [entry.best_move] if entry.best_move is not None else []
+        if entry.bound == "lower" and entry.score >= beta:
+            return entry.score, [entry.best_move] if entry.best_move is not None else []
+        if entry.bound == "upper" and entry.score <= alpha:
+            return entry.score, [entry.best_move] if entry.best_move is not None else []
+        return None
+
+    def _store_tt(
+        self, board: Board, depth: int, score: float, bound: str, best_move: Move | None
+    ) -> None:
+        key = self._position_key(board)
+        current = self._tt.get(key)
+        if current is None or depth >= current.depth:
+            self._tt[key] = TranspositionEntry(depth, score, bound, best_move)
+
+    @staticmethod
+    def _order_moves(
+        board: Board, moves: Iterable[Move], hash_move: Move | None = None
+    ) -> Iterator[Move]:
         scored_moves: list[tuple[Move, float]] = []
         for move in moves:
-            score = 0
+            score = 0.0
+
+            if hash_move is not None and move == hash_move:
+                score += 1_000_000
 
             if board.is_capture(move):
-                victim_piece = board.piece_at(move.to_square)
+                victim_piece = PAWN if board.is_en_passant(move) else board.piece_type_at(move.to_square)
                 attacker_piece = board.piece_at(move.from_square)
                 if victim_piece is not None and attacker_piece is not None:
-                    score = PieceValues.as_dict().get(
-                        victim_piece.piece_type, 0
-                    ) * 10 - PieceValues.as_dict().get(attacker_piece.piece_type, 0)
+                    score += PieceValues.as_dict().get(victim_piece, 0) * 10 - PieceValues.as_dict().get(
+                        attacker_piece.piece_type, 0
+                    )
 
-                if move.promotion:
-                    score += PieceValues.as_dict().get(move.promotion, 0) * 5
+            if move.promotion:
+                score += PieceValues.as_dict().get(move.promotion, 0) * 5
 
             if board.gives_check(move):
-                score += 1
+                score += 50
 
             scored_moves.append((move, score))
 
