@@ -1,280 +1,371 @@
-from chess import BISHOP, BLACK, KNIGHT, PAWN, QUEEN, ROOK, WHITE, Board, SquareSet
+from chess import (
+    BB_CENTER,
+    BB_FILES,
+    BISHOP,
+    BLACK,
+    KING,
+    KNIGHT,
+    PAWN,
+    QUEEN,
+    ROOK,
+    WHITE,
+    Board,
+    square_file,
+    square_mirror,
+    square_rank,
+)
 
 from .infra import Heuristic, PieceValues
 
 
 class ClassicalHeuristic(Heuristic):
-    # Parameter weights for bonus eval
-    PAWN_RANK_WEIGHT = 7
-    PAWN_FILE_WEIGHT = 5
-    PAWN_CENTER_WEIGHT = 5
-    PAWN_DISTANCE_WEIGHT = 5
+    BISHOP_PAIR_BONUS = 35
+    CONNECTED_PAWN_BONUS = 8
+    DOUBLED_PAWN_PENALTY = 14
+    ISOLATED_PAWN_PENALTY = 16
+    PASSED_PAWN_BONUS = (0, 5, 10, 20, 36, 60, 95, 0)
+    ROOK_OPEN_FILE_BONUS = 24
+    ROOK_SEMI_OPEN_FILE_BONUS = 12
+    ROOK_ON_SEVENTH_BONUS = 18
+    TEMPO_BONUS = 12
 
-    KNIGHT_CENTER_WEIGHT = 7
-    KNIGHT_DISTANCE_WEIGHT = 8
+    PAWN_MG = (
+        0, 0, 0, 0, 0, 0, 0, 0,
+        5, 10, 10, -20, -20, 10, 10, 5,
+        5, -5, -10, 0, 0, -10, -5, 5,
+        0, 0, 0, 25, 25, 0, 0, 0,
+        5, 5, 10, 30, 30, 10, 5, 5,
+        10, 10, 20, 35, 35, 20, 10, 10,
+        50, 50, 50, 50, 50, 50, 50, 50,
+        0, 0, 0, 0, 0, 0, 0, 0,
+    )
+    PAWN_EG = (
+        0, 0, 0, 0, 0, 0, 0, 0,
+        10, 10, 10, -10, -10, 10, 10, 10,
+        10, 5, 5, 15, 15, 5, 5, 10,
+        15, 15, 20, 30, 30, 20, 15, 15,
+        20, 20, 30, 40, 40, 30, 20, 20,
+        30, 30, 40, 55, 55, 40, 30, 30,
+        60, 60, 60, 60, 60, 60, 60, 60,
+        0, 0, 0, 0, 0, 0, 0, 0,
+    )
+    KNIGHT_MG = (
+        -50, -40, -30, -30, -30, -30, -40, -50,
+        -40, -20, 0, 0, 0, 0, -20, -40,
+        -30, 0, 10, 15, 15, 10, 0, -30,
+        -30, 5, 15, 20, 20, 15, 5, -30,
+        -30, 0, 15, 20, 20, 15, 0, -30,
+        -30, 5, 10, 15, 15, 10, 5, -30,
+        -40, -20, 0, 5, 5, 0, -20, -40,
+        -50, -40, -30, -30, -30, -30, -40, -50,
+    )
+    KNIGHT_EG = (
+        -40, -25, -20, -20, -20, -20, -25, -40,
+        -25, -10, 0, 5, 5, 0, -10, -25,
+        -20, 5, 10, 15, 15, 10, 5, -20,
+        -20, 10, 15, 20, 20, 15, 10, -20,
+        -20, 10, 15, 20, 20, 15, 10, -20,
+        -20, 5, 10, 15, 15, 10, 5, -20,
+        -25, -10, 0, 5, 5, 0, -10, -25,
+        -40, -25, -20, -20, -20, -20, -25, -40,
+    )
+    BISHOP_MG = (
+        -20, -10, -10, -10, -10, -10, -10, -20,
+        -10, 5, 0, 0, 0, 0, 5, -10,
+        -10, 10, 10, 10, 10, 10, 10, -10,
+        -10, 0, 10, 10, 10, 10, 0, -10,
+        -10, 5, 5, 10, 10, 5, 5, -10,
+        -10, 0, 5, 10, 10, 5, 0, -10,
+        -10, 0, 0, 0, 0, 0, 0, -10,
+        -20, -10, -10, -10, -10, -10, -10, -20,
+    )
+    BISHOP_EG = (
+        -15, -10, -8, -8, -8, -8, -10, -15,
+        -10, 0, 2, 5, 5, 2, 0, -10,
+        -8, 2, 8, 10, 10, 8, 2, -8,
+        -8, 5, 10, 12, 12, 10, 5, -8,
+        -8, 5, 10, 12, 12, 10, 5, -8,
+        -8, 2, 8, 10, 10, 8, 2, -8,
+        -10, 0, 2, 5, 5, 2, 0, -10,
+        -15, -10, -8, -8, -8, -8, -10, -15,
+    )
+    ROOK_MG = (
+        0, 0, 5, 10, 10, 5, 0, 0,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        -5, 0, 0, 0, 0, 0, 0, -5,
+        15, 20, 20, 20, 20, 20, 20, 15,
+        0, 0, 5, 10, 10, 5, 0, 0,
+    )
+    ROOK_EG = (
+        0, 5, 10, 12, 12, 10, 5, 0,
+        0, 5, 10, 12, 12, 10, 5, 0,
+        0, 5, 10, 12, 12, 10, 5, 0,
+        0, 5, 10, 12, 12, 10, 5, 0,
+        0, 5, 10, 12, 12, 10, 5, 0,
+        0, 5, 10, 12, 12, 10, 5, 0,
+        5, 10, 12, 15, 15, 12, 10, 5,
+        0, 5, 10, 12, 12, 10, 5, 0,
+    )
+    QUEEN_MG = (
+        -20, -10, -10, -5, -5, -10, -10, -20,
+        -10, 0, 0, 0, 0, 0, 0, -10,
+        -10, 0, 5, 5, 5, 5, 0, -10,
+        -5, 0, 5, 5, 5, 5, 0, -5,
+        0, 0, 5, 5, 5, 5, 0, -5,
+        -10, 5, 5, 5, 5, 5, 0, -10,
+        -10, 0, 5, 0, 0, 0, 0, -10,
+        -20, -10, -10, -5, -5, -10, -10, -20,
+    )
+    QUEEN_EG = (
+        -10, -5, -5, 0, 0, -5, -5, -10,
+        -5, 0, 5, 5, 5, 5, 0, -5,
+        -5, 5, 8, 10, 10, 8, 5, -5,
+        0, 5, 10, 12, 12, 10, 5, 0,
+        0, 5, 10, 12, 12, 10, 5, 0,
+        -5, 5, 8, 10, 10, 8, 5, -5,
+        -5, 0, 5, 5, 5, 5, 0, -5,
+        -10, -5, -5, 0, 0, -5, -5, -10,
+    )
+    KING_MG = (
+        20, 30, 10, 0, 0, 10, 30, 20,
+        20, 20, 0, 0, 0, 0, 20, 20,
+        -10, -20, -20, -20, -20, -20, -20, -10,
+        -20, -30, -30, -40, -40, -30, -30, -20,
+        -30, -40, -40, -50, -50, -40, -40, -30,
+        -30, -40, -40, -50, -50, -40, -40, -30,
+        -30, -40, -40, -50, -50, -40, -40, -30,
+        -30, -40, -40, -50, -50, -40, -40, -30,
+    )
+    KING_EG = (
+        -50, -30, -20, -20, -20, -20, -30, -50,
+        -30, -10, 0, 0, 0, 0, -10, -30,
+        -20, 0, 10, 15, 15, 10, 0, -20,
+        -20, 0, 15, 20, 20, 15, 0, -20,
+        -20, 0, 15, 20, 20, 15, 0, -20,
+        -20, 0, 10, 15, 15, 10, 0, -20,
+        -30, -10, 0, 0, 0, 0, -10, -30,
+        -50, -30, -20, -20, -20, -20, -30, -50,
+    )
 
-    BISHOP_CENTER_WEIGHT = 5
-    BISHOP_DISTANCE_WEIGHT = 8
+    def _evaluate_internal(self, board: Board) -> float:
+        middle_game_score = 0
+        end_game_score = 0
 
-    ROOK_CENTER_WEIGHT = 8
-    ROOK_DISTANCE_WEIGHT = 5
+        middle_game_score += self.TEMPO_BONUS if board.turn == WHITE else -self.TEMPO_BONUS
 
-    QUEEN_CENTER_WEIGHT = 2
-    QUEEN_DISTANCE_WEIGHT = 8
+        middle_game_score += self._evaluate_side(board, WHITE)
+        middle_game_score -= self._evaluate_side(board, BLACK)
 
-    KING_CENTER_WEIGHT = 8
-    KING_DISTANCE_WEIGHT = 5
+        end_game_score += self._evaluate_side(board, WHITE, endgame=True)
+        end_game_score -= self._evaluate_side(board, BLACK, endgame=True)
 
-    @staticmethod
-    def use_quiescence() -> bool:
-        """
-        Whether to use quiescence search with this heuristic.
-        :return: Use quiescence or not
-        """
+        phase = self._phase(board)
+        evaluation = (middle_game_score * phase + end_game_score * (24 - phase)) / 24
+        return int(evaluation if board.turn == WHITE else -evaluation)
+
+    def _evaluate_side(self, board: Board, color: bool, *, endgame: bool = False) -> int:
+        pawns = board.pieces(PAWN, color)
+        knights = board.pieces(KNIGHT, color)
+        bishops = board.pieces(BISHOP, color)
+        rooks = board.pieces(ROOK, color)
+        queens = board.pieces(QUEEN, color)
+        king = board.king(color)
+
+        if king is None:
+            return 0
+
+        score = 0
+        score += len(pawns) * PieceValues.PAWN_VALUE
+        score += len(knights) * PieceValues.KNIGHT_VALUE
+        score += len(bishops) * PieceValues.BISHOP_VALUE
+        score += len(rooks) * PieceValues.ROOK_VALUE
+        score += len(queens) * PieceValues.QUEEN_VALUE
+
+        for square in pawns:
+            score += self._psqt(PAWN, square, color, endgame=endgame)
+            score += self._pawn_structure_bonus(board, square, color)
+
+        for square in knights:
+            score += self._psqt(KNIGHT, square, color, endgame=endgame)
+
+        for square in bishops:
+            score += self._psqt(BISHOP, square, color, endgame=endgame)
+
+        for square in rooks:
+            score += self._psqt(ROOK, square, color, endgame=endgame)
+            score += self._rook_file_bonus(board, square, color)
+
+        for square in queens:
+            score += self._psqt(QUEEN, square, color, endgame=endgame)
+
+        score += self._psqt(KING, king, color, endgame=endgame)
+        score += self._mobility(board, color, endgame=endgame)
+        score += self._bishop_pair_bonus(bishops)
+        score += self._king_safety(board, color, endgame=endgame)
+
+        if endgame:
+            score += self._endgame_king_pressure(board, color)
+
+        return score
+
+    def _mobility(self, board: Board, color: bool, *, endgame: bool) -> int:
+        own_pawns = board.pieces(PAWN, color)
+        own_king = board.king(color)
+        if own_king is None:
+            return 0
+
+        knight_mobility = 0
+        for square in board.pieces(KNIGHT, color):
+            knight_mobility += len(board.attacks(square) & ~own_pawns)
+
+        bishop_mobility = 0
+        for square in board.pieces(BISHOP, color):
+            bishop_mobility += len(board.attacks(square))
+
+        rook_mobility = 0
+        for square in board.pieces(ROOK, color):
+            rook_mobility += len(board.attacks(square))
+
+        queen_mobility = 0
+        for square in board.pieces(QUEEN, color):
+            queen_mobility += len(board.attacks(square))
+
+        king_zone = len(board.attacks(own_king) & BB_CENTER)
+        if endgame:
+            return (
+                knight_mobility * 3
+                + bishop_mobility * 3
+                + rook_mobility * 2
+                + queen_mobility * 1
+                + king_zone * 3
+            )
+
+        return (
+            knight_mobility * 4
+            + bishop_mobility * 4
+            + rook_mobility * 2
+            + queen_mobility
+        )
+
+    def _pawn_structure_bonus(self, board: Board, square: int, color: bool) -> int:
+        file_index = square_file(square)
+        rank_index = square_rank(square) if color == WHITE else 7 - square_rank(square)
+        own_pawns = board.pieces(PAWN, color)
+        enemy_pawns = board.pieces(PAWN, not color)
+        file_mask = BB_FILES[file_index]
+        adjacent_mask = 0
+        if file_index > 0:
+            adjacent_mask |= BB_FILES[file_index - 1]
+        if file_index < 7:
+            adjacent_mask |= BB_FILES[file_index + 1]
+
+        score = 0
+        if len(own_pawns & file_mask) > 1:
+            score -= self.DOUBLED_PAWN_PENALTY
+        if not own_pawns & adjacent_mask:
+            score -= self.ISOLATED_PAWN_PENALTY
+        if own_pawns & board.attacks(square):
+            score += self.CONNECTED_PAWN_BONUS
+        if self._is_passed_pawn(square, color, enemy_pawns):
+            score += self.PASSED_PAWN_BONUS[rank_index]
+        return score
+
+    def _is_passed_pawn(self, square: int, color: bool, enemy_pawns: int) -> bool:
+        file_index = square_file(square)
+        rank_index = square_rank(square)
+        for enemy_square in enemy_pawns:
+            enemy_file = square_file(enemy_square)
+            if abs(enemy_file - file_index) > 1:
+                continue
+            enemy_rank = square_rank(enemy_square)
+            if color == WHITE and enemy_rank > rank_index:
+                return False
+            if color == BLACK and enemy_rank < rank_index:
+                return False
         return True
 
-    def _evaluate_internal(self, board: Board) -> float:  # noqa: PLR0914
-        """
-        Classical style heuristic function based on piece values and derived from human knowledge.
-        :param board: board representation
-        :return: position evaluation
-        """
+    def _rook_file_bonus(self, board: Board, square: int, color: bool) -> int:
+        file_mask = BB_FILES[square_file(square)]
+        own_pawns = board.pieces(PAWN, color)
+        enemy_pawns = board.pieces(PAWN, not color)
 
-        # TODO: improve, at the very least make it from point of view of player to move
+        score = 0
+        if not own_pawns & file_mask:
+            score += self.ROOK_SEMI_OPEN_FILE_BONUS
+            if not enemy_pawns & file_mask:
+                score += self.ROOK_OPEN_FILE_BONUS - self.ROOK_SEMI_OPEN_FILE_BONUS
 
-        # pieces
-        w_pawns = board.pieces(PAWN, WHITE)
-        b_pawns = board.pieces(PAWN, BLACK)
-        w_knights = board.pieces(KNIGHT, WHITE)
-        b_knights = board.pieces(KNIGHT, BLACK)
-        w_bishops = board.pieces(BISHOP, WHITE)
-        b_bishops = board.pieces(BISHOP, BLACK)
-        w_rooks = board.pieces(ROOK, WHITE)
-        b_rooks = board.pieces(ROOK, BLACK)
-        w_queens = board.pieces(QUEEN, WHITE)
-        b_queens = board.pieces(QUEEN, BLACK)
-        w_king = board.king(WHITE)
-        b_king = board.king(BLACK)
+        target_rank = 6 if color == WHITE else 1
+        if square_rank(square) == target_rank:
+            score += self.ROOK_ON_SEVENTH_BONUS
 
-        # Initial eval - adding value of pieces on board
-        evaluation = (
-            len(w_pawns) * PieceValues.PAWN_VALUE
-            - len(b_pawns) * PieceValues.PAWN_VALUE
-            + len(w_knights) * PieceValues.KNIGHT_VALUE
-            - len(b_knights) * PieceValues.KNIGHT_VALUE
-            + len(w_bishops) * PieceValues.BISHOP_VALUE
-            - len(b_bishops) * PieceValues.BISHOP_VALUE
-            + len(w_rooks) * PieceValues.ROOK_VALUE
-            - len(b_rooks) * PieceValues.ROOK_VALUE
-            + len(w_queens) * PieceValues.QUEEN_VALUE
-            - len(b_queens) * PieceValues.QUEEN_VALUE
+        return score
+
+    def _bishop_pair_bonus(self, bishops: int) -> int:
+        return self.BISHOP_PAIR_BONUS if len(bishops) >= 2 else 0
+
+    def _king_safety(self, board: Board, color: bool, *, endgame: bool) -> int:
+        if endgame:
+            return 0
+
+        king = board.king(color)
+        if king is None:
+            return 0
+
+        file_index = square_file(king)
+        rank_index = square_rank(king)
+        shield_rank = rank_index + 1 if color == WHITE else rank_index - 1
+        shield = 0
+        if 0 <= shield_rank <= 7:
+            for next_file in range(max(0, file_index - 1), min(7, file_index + 1) + 1):
+                square = shield_rank * 8 + next_file
+                if board.piece_type_at(square) == PAWN and board.color_at(square) == color:
+                    shield += 12
+
+        attackers = len(board.attackers(not color, king))
+        return shield - attackers * 18
+
+    def _endgame_king_pressure(self, board: Board, color: bool) -> int:
+        own_king = board.king(color)
+        enemy_king = board.king(not color)
+        if own_king is None or enemy_king is None:
+            return 0
+
+        distance = abs(square_file(own_king) - square_file(enemy_king)) + abs(
+            square_rank(own_king) - square_rank(enemy_king)
         )
-
-        # Pawns
-        wp_bonus = self._pawn_bonus(w_pawns, b_king, color=True)
-        bp_bonus = self._pawn_bonus(b_pawns, w_king, color=False)
-
-        # Knights
-        wk_bonus = self._knight_bonus(w_knights, b_king)
-        bk_bonus = self._knight_bonus(b_knights, w_king)
-
-        # Bishops
-        wb_bonus = self._bishop_bonus(w_bishops, b_king)
-        bb_bonus = self._bishop_bonus(b_bishops, w_king)
-
-        # Rooks
-        wr_bonus = self._rook_bonus(w_rooks, b_king)
-        br_bonus = self._rook_bonus(b_rooks, w_king)
-
-        # Queens
-        wq_bonus = self._queen_bonus(w_queens, b_king)
-        bq_bonus = self._queen_bonus(b_queens, w_king)
-
-        # Kings
-        wki_bonus = self._king_bonus(w_king, b_king, queens_on_board=bool(b_queens))
-        bki_bonus = self._king_bonus(b_king, w_king, queens_on_board=bool(w_queens))
-
-        # Add bonuses to eval
-        evaluation += (
-            wp_bonus
-            - bp_bonus
-            + wk_bonus
-            - bk_bonus
-            + wb_bonus
-            - bb_bonus
-            + wr_bonus
-            - br_bonus
-            + wq_bonus
-            - bq_bonus
-            + wki_bonus
-            - bki_bonus
-        )
-
-        if not board.turn:
-            return int(-evaluation)
-        return int(evaluation)
-
-    def _pawn_bonus(self, pawns: SquareSet, king_position: int, *, color: bool) -> int:
-        """
-        Evaluation bonus for positions of pawns on board.
-        :param pawns: set of squares containing pawns
-        :param king_position: opponent king's position on board
-        :param color: player to move, white True, black False
-        :return: evaluation bonus
-        """
-        p_bonus = 0
-        for pawn_position in pawns:
-            # rank bonus -> the further forward the pawn, the more of a bonus
-            if color:
-                p_bonus += (int(pawn_position / 8) - 1) * self.PAWN_RANK_WEIGHT
-            else:
-                p_bonus += (6 - int(pawn_position / 8)) * self.PAWN_RANK_WEIGHT
-
-            # file penalty -> central files take none, the closer to rim the less pawn's value
-            if pawn_position % 8 < 3:
-                p_bonus -= (3 - pawn_position % 8) * self.PAWN_FILE_WEIGHT
-            elif pawn_position % 8 > 4:
-                p_bonus -= (pawn_position % 8 - 4) * self.PAWN_FILE_WEIGHT
-
-            # occupying center bonus
-            p_bonus += self._occupying_center_bonus(pawn_position, self.PAWN_CENTER_WEIGHT)
-            # distance from king bonus
-            p_bonus += self._distance_from_king_bonus(
-                pawn_position, king_position, self.PAWN_DISTANCE_WEIGHT
-            )
-
-        return p_bonus
-
-    def _knight_bonus(self, knights: SquareSet, king_position: int) -> int:
-        """
-        Evaluation bonus for positions knights on board.
-        :param knights: set of squares containing knights
-        :param king_position: opponent king's position on board
-        :return: evaluation bonus
-        """
-        k_bonus = 0
-        for knight_position in knights:
-            # occupying center bonus
-            k_bonus += self._occupying_center_bonus(knight_position, self.KNIGHT_CENTER_WEIGHT)
-
-            # distance from king bonus
-            k_bonus += self._distance_from_king_bonus(
-                knight_position, king_position, self.KNIGHT_DISTANCE_WEIGHT
-            )
-
-        return k_bonus
-
-    def _bishop_bonus(self, bishops: SquareSet, king_position: int) -> int:
-        """
-        Evaluation bonus for positions of bishops on board.
-        :param bishops: set of squares containing bishops
-        :param king_position: opponent king's position on board
-        :return: evaluation bonus
-        """
-        b_bonus = 0
-        for bishop_position in bishops:
-            # occupying center bonus
-            b_bonus += self._occupying_center_bonus(bishop_position, self.BISHOP_CENTER_WEIGHT)
-
-            # distance from king bonus
-            b_bonus += self._distance_from_king_bonus(
-                bishop_position, king_position, self.BISHOP_DISTANCE_WEIGHT
-            )
-
-        return b_bonus
-
-    def _rook_bonus(self, rooks: SquareSet, king_position: int) -> int:
-        """
-        Evaluation bonus for positions of rooks on board.
-        :param rooks: set of squares containing rooks
-        :param king_position: opponent king's position on board
-        :return: evaluation bonus
-        """
-        r_bonus = 0
-        for rook_position in rooks:
-            # occupying center files bonus
-            if rook_position % 8 in range(3, 5):
-                r_bonus += self.ROOK_CENTER_WEIGHT
-            if rook_position % 8 in range(2, 6):
-                r_bonus += self.ROOK_CENTER_WEIGHT
-            if rook_position % 8 in range(1, 7):
-                r_bonus += self.ROOK_CENTER_WEIGHT
-
-            # distance from king bonus
-            r_bonus += self._distance_from_king_bonus(
-                rook_position, king_position, self.ROOK_DISTANCE_WEIGHT
-            )
-
-        return r_bonus
-
-    def _queen_bonus(self, queens: SquareSet, king_position: int) -> int:
-        """
-        Evaluation bonus for positions of queens on board.
-        :param queens: set of squares containing queens
-        :param king_position: opponent king's position on board
-        :return: evaluation bonus
-        """
-        q_bonus = 0
-        for queen_position in queens:
-            # occupying center bonus
-            q_bonus += self._occupying_center_bonus(queen_position, self.QUEEN_CENTER_WEIGHT)
-
-            # distance from king bonus
-            q_bonus += self._distance_from_king_bonus(
-                queen_position, king_position, self.QUEEN_DISTANCE_WEIGHT
-            )
-
-        return q_bonus
-
-    def _king_bonus(self, king_position: int, opponents_king: int, *, queens_on_board: bool) -> int:
-        """
-        Evaluation bonus for positions of king on board.
-        :param king_position: king's position on board
-        :param opponents_king: opponent king's position on board
-        :param queens_on_board: information about the presence of opponent's queens on board
-        :return: evaluation bonus
-        """
-        k_bonus = 0
-        king_center_weight = (
-            self.KING_CENTER_WEIGHT if not queens_on_board else -self.KING_CENTER_WEIGHT
-        )
-
-        # occupying center bonus
-        k_bonus += self._occupying_center_bonus(king_position, king_center_weight)
-
-        # distance from king bonus
-        k_bonus += self._distance_from_king_bonus(
-            king_position, opponents_king, self.KING_DISTANCE_WEIGHT
-        )
-
-        return k_bonus
+        enemy_center_distance = abs(square_file(enemy_king) - 3.5) + abs(square_rank(enemy_king) - 3.5)
+        return int((14 - distance) * 3 + enemy_center_distance * 4)
 
     @staticmethod
-    def _occupying_center_bonus(piece_position: int, bonus: int) -> int:
-        """
-        Bonus for occupying squares close to center.
-        :param piece_position: position of piece to evaluate
-        :param bonus: bonus value for piece type
-        :return: evaluation bonus
-        """
-        if int(piece_position / 8) in range(3, 5) and piece_position % 8 in range(3, 5):
-            return 3 * bonus
-        if int(piece_position / 8) in range(2, 6) and piece_position % 8 in range(2, 6):
-            return 2 * bonus
-        if int(piece_position / 8) in range(1, 7) and piece_position % 8 in range(1, 7):
-            return bonus
-        return 0
+    def _phase(board: Board) -> int:
+        phase = 0
+        phase += len(board.pieces(QUEEN, WHITE)) * 4
+        phase += len(board.pieces(QUEEN, BLACK)) * 4
+        phase += len(board.pieces(ROOK, WHITE)) * 2
+        phase += len(board.pieces(ROOK, BLACK)) * 2
+        phase += len(board.pieces(BISHOP, WHITE))
+        phase += len(board.pieces(BISHOP, BLACK))
+        phase += len(board.pieces(KNIGHT, WHITE))
+        phase += len(board.pieces(KNIGHT, BLACK))
+        return max(0, min(24, phase))
 
-    @staticmethod
-    def _distance_from_king_bonus(piece_position: int, king_position: int, bonus: int) -> int:
-        """
-        Bonus for distance from opponent's king.
-        :param piece_position: position of piece to evaluate
-        :param king_position: opponent king's position
-        :param bonus: bonus value for piece type
-        :return: evaluation bonus
-        """
-        distance = abs(int(piece_position / 8) - int(king_position / 8)) + abs(
-            piece_position % 8 - king_position % 8
-        )
-        return int(14 / distance * bonus - bonus)
+    def _psqt(self, piece_type: int, square: int, color: bool, *, endgame: bool) -> int:
+        index = square if color == WHITE else square_mirror(square)
+        return self._psqt_table(piece_type, endgame)[index]
+
+    def _psqt_table(self, piece_type: int, endgame: bool) -> tuple[int, ...]:
+        if piece_type == PAWN:
+            return self.PAWN_EG if endgame else self.PAWN_MG
+        if piece_type == KNIGHT:
+            return self.KNIGHT_EG if endgame else self.KNIGHT_MG
+        if piece_type == BISHOP:
+            return self.BISHOP_EG if endgame else self.BISHOP_MG
+        if piece_type == ROOK:
+            return self.ROOK_EG if endgame else self.ROOK_MG
+        if piece_type == QUEEN:
+            return self.QUEEN_EG if endgame else self.QUEEN_MG
+        return self.KING_EG if endgame else self.KING_MG

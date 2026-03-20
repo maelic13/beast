@@ -21,17 +21,23 @@ class Heuristic(ABC):
         self.fifty_moves_rule = fifty_moves_rule
         self._syzygy_path = syzygy_path
         self._syzygy_probe_limit = syzygy_probe_limit
+        self._tablebase = open_tablebase(syzygy_path) if syzygy_path is not None else None
 
         # precalculate win and loss values (speed-up of heuristic)
         self.draw_value = self.probability_to_centipawn(0.5) * 100  # [cp]
         self.loss_value = self.probability_to_centipawn(0.0) * 100  # [cp]
         self.win_value = self.probability_to_centipawn(1.0) * 100  # [cp]
 
+    @staticmethod
+    def use_quiescence() -> bool:
+        return True
+
     def evaluate_result(self, board: Board, depth: int) -> float:
-        if board.outcome().winner is None:
+        outcome = board.outcome()
+        if outcome is None or outcome.winner is None:
             return self.draw_value
 
-        if board.turn is not board.outcome().winner:
+        if board.turn is not outcome.winner:
             return self.loss_value - 100 * depth
 
         return self.win_value + 100 * depth
@@ -48,19 +54,18 @@ class Heuristic(ABC):
             return self.draw_value
 
         # tablebase probing
-        tablebase_evaluation = 0.0
-        if len(board.piece_map()) <= self._syzygy_probe_limit and self._syzygy_path is not None:
-            with open_tablebase(self._syzygy_path) as tablebase:
-                wdl = tablebase.get_wdl(board)
+        if len(board.piece_map()) <= self._syzygy_probe_limit and self._tablebase is not None:
+            wdl = self._tablebase.get_wdl(board)
+            dtz = self._tablebase.get_dtz(board)
 
-            if (self.fifty_moves_rule and wdl == 2) or (not self.fifty_moves_rule and wdl == 1):
-                tablebase_evaluation = self.win_value
-            elif (self.fifty_moves_rule and wdl == -2) or (not self.fifty_moves_rule and wdl == -1):
-                tablebase_evaluation = self.loss_value
-            else:
+            if (self.fifty_moves_rule and wdl == 2) or (not self.fifty_moves_rule and wdl > 0):
+                return self.win_value - (dtz or 0)
+            if (self.fifty_moves_rule and wdl == -2) or (not self.fifty_moves_rule and wdl < 0):
+                return self.loss_value - (dtz or 0)
+            if wdl == 0:
                 return self.draw_value
 
-        return tablebase_evaluation + self._evaluate_internal(board)
+        return self._evaluate_internal(board)
 
     @staticmethod
     def centipawn_to_probability(centipawn: int) -> float:

@@ -4,6 +4,11 @@
 .idea/
 .venv/
 .venv_dev/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+__pycache__/
 *.egg-info
 bin/
 build/
@@ -17,4 +22,6 @@ target/
 *.h5
 *.pgn
 *.pyc
+*.pyo
+.coverage
 Cargo.lock

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import chess
+import numpy as np
 import onnxruntime as ort
 
 from beast_chess.neural_networks import NetInputFactory
@@ -9,6 +10,8 @@ from .infra import Heuristic
 
 
 class NeuralNetwork(Heuristic):
+    CACHE_SIZE = 100_000
+
     def __init__(
         self,
         model_file: Path,
@@ -28,11 +31,14 @@ class NeuralNetwork(Heuristic):
 
         options = ort.SessionOptions()
         options.intra_op_num_threads = threads
+        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         self._session = ort.InferenceSession(model_file, options)
+        self._input_name = self._session.get_inputs()[0].name
 
         self._nn_input = NetInputFactory.from_string(
             self._session.get_modelmeta().custom_metadata_map.get("model_version")
         )
+        self._cache: dict[tuple[object, ...], float] = {}
 
     def _evaluate_internal(self, board: chess.Board) -> float:
         """
@@ -40,7 +46,16 @@ class NeuralNetwork(Heuristic):
         :param board: chess board representation
         :return: board evaluation
         """
-        output = self._session.run(
-            None, {self._session.get_inputs()[0].name: [self._nn_input(board.fen())]}
-        )
-        return round(output[0][0][0] * 2000)
+        position_key = board._transposition_key()
+        cached = self._cache.get(position_key)
+        if cached is not None:
+            return cached
+
+        network_input = np.expand_dims(self._nn_input(board), axis=0)
+        output = self._session.run(None, {self._input_name: network_input})
+        evaluation = round(output[0][0][0] * 2000)
+
+        if len(self._cache) >= self.CACHE_SIZE:
+            self._cache.clear()
+        self._cache[position_key] = evaluation
+        return evaluation

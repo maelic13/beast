@@ -46,7 +46,7 @@ jobs:
       - name: Setup Python ${{ matrix.arch }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
           architecture: ${{ matrix.arch }}
 
       - name: Install build dependencies
