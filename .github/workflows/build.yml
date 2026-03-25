@@ -90,8 +90,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Prepare model asset
-        id: prepare-model
+      - name: Find model file
+        id: model-file
         shell: bash
         run: |
           model_file="$(python - <<'PY'
@@ -103,13 +103,11 @@ jobs:
           print(match.group(1))
           PY
           )"
-          asset_name="beast-${{ github.event.release.tag_name }}-${model_file}"
-          cp "${model_file}" "${asset_name}"
-          echo "asset_name=${asset_name}" >> "$GITHUB_OUTPUT"
+          echo "model_file=${model_file}" >> "$GITHUB_OUTPUT"
 
       - name: Upload model to release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release upload "${{ github.event.release.tag_name }}"
-          "${{ steps.prepare-model.outputs.asset_name }}" --clobber
+          "${{ steps.model-file.outputs.model_file }}" --clobber
