@@ -83,19 +83,33 @@ jobs:
           gh release upload "${{ github.event.release.tag_name }}"
           "dist/${{ steps.prepare-asset.outputs.asset_name }}" --clobber
 
-  package-models:
-    name: Package models
+  upload-model:
+    name: Upload model
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Zip models directory
-        run: zip -r "models-${{ github.event.release.tag_name }}.zip" models
+      - name: Prepare model asset
+        id: prepare-model
+        shell: bash
+        run: |
+          model_file="$(python - <<'PY'
+          import pathlib
+          import re
 
-      - name: Upload models archive to release
+          text = pathlib.Path("src/beast_chess/infra/constants.py").read_text(encoding="utf-8")
+          match = re.search(r'DEFAULT_MODEL_FILE\s*=\s*"([^"]+)"', text)
+          print(match.group(1))
+          PY
+          )"
+          asset_name="beast-${{ github.event.release.tag_name }}-${model_file}"
+          cp "${model_file}" "${asset_name}"
+          echo "asset_name=${asset_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload model to release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release upload "${{ github.event.release.tag_name }}"
-          "models-${{ github.event.release.tag_name }}.zip" --clobber
+          "${{ steps.prepare-model.outputs.asset_name }}" --clobber

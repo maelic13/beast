@@ -27,7 +27,7 @@ class Engine:
 
     def start(self) -> None:
         """
-        Start the engine process, wait for EngineCommand and search for the best move when required.
+        Start the engine process, wait for EngineCommand, and search for the best move.
         """
         while True:
             # check queue for command
@@ -38,7 +38,11 @@ class Engine:
             if command.stop:
                 continue
 
-            self._heuristic = self._choose_heuristic(command.search_options)
+            try:
+                self._heuristic = self._choose_heuristic(command.search_options)
+            except RuntimeError as err:
+                print(f"info string {err}", flush=True)
+                continue
             self._start_timer(command.search_options)
             self._search(command.search_options.board, command.search_options.depth)
 
@@ -67,33 +71,33 @@ class Engine:
         Initialize a heuristic function based on search parameters.
         :param search_options: search parameters
         """
-        classical_heuristic = ClassicalHeuristic(
-            fifty_moves_rule=search_options.fifty_moves_rule,
-            syzygy_path=search_options.syzygy_path,
-            syzygy_probe_limit=search_options.syzygy_probe_limit,
-        )
-
         if search_options.heuristic_type == HeuristicType.CLASSICAL:
-            return classical_heuristic
+            return ClassicalHeuristic(
+                fifty_moves_rule=search_options.fifty_moves_rule,
+                syzygy_path=search_options.syzygy_path,
+                syzygy_probe_limit=search_options.syzygy_probe_limit,
+            )
 
         if search_options.heuristic_type == HeuristicType.RANDOM:
             search_options.depth = 1
             return RandomHeuristic()
 
-        if search_options.model_file is None:
-            msg = "Warning: incorrect model file."
-            raise RuntimeError(msg)
-
         if search_options.heuristic_type == HeuristicType.NEURAL_NETWORK:
+            model_path = Constants.resolve_model_path(search_options.model_file)
+            if model_path is None:
+                msg = f"Model file '{search_options.model_file}' was not found."
+                raise RuntimeError(msg)
+
             return NeuralNetwork(
-                model_file=search_options.model_file,
+                model_file=model_path,
                 fifty_moves_rule=search_options.fifty_moves_rule,
                 syzygy_path=search_options.syzygy_path,
                 syzygy_probe_limit=search_options.syzygy_probe_limit,
                 threads=search_options.threads,
             )
 
-        return classical_heuristic
+        msg = f"Unknown heuristic type: {search_options.heuristic_type}"
+        raise RuntimeError(msg)
 
     def _start_timer(self, search_options: SearchOptions) -> None:
         """

@@ -15,7 +15,7 @@ class SearchOptions:
     board: chess board representation
     heuristic_type: what heuristic to use for evaluation, see HeuristicType
 
-    move_time: time for current move in milliseconds
+    move_time: time for the current move in milliseconds
     white_time: white's remaining time in milliseconds
     white_increment: increment for every move white makes
     black_time: black's time in milliseconds
@@ -35,7 +35,7 @@ class SearchOptions:
 
         self.fifty_moves_rule = True
         self.heuristic_type = HeuristicType.CLASSICAL
-        self.model_file: Path | None = None
+        self.model_file = Constants.default_model_path()
         self.syzygy_path: Path | None = None
         self.syzygy_probe_limit: int = 7
         self.threads: int = 1
@@ -70,7 +70,7 @@ class SearchOptions:
             (f"option name Heuristic type combo "
             f"default {options.heuristic_type.name.lower()} "
             f"var {' var '.join(h.name.lower() for h in HeuristicType)}"),
-            f"option name ModelFile type string default {options.model_file or '<empty>'!s} ",
+            f"option name ModelFile type string default {options.model_file!s} ",
             (f"option name Syzygy50MoveRule type check default "
             f"{str(options.fifty_moves_rule).lower()}"),
             (f"option name SyzygyPath type string "
@@ -149,11 +149,7 @@ class SearchOptions:
                 except RuntimeError as err:
                     print(err)
             case "modelfile":
-                path = Path(value.replace("\\", "/"))
-                if not path.exists():
-                    print("Invalid model file.")
-                    return
-                self.model_file = path
+                self.model_file = Path(value.replace("\\", "/"))
             case "syzygypath":
                 path = Path(value.replace("\\", "/"))
                 if not path.exists():
