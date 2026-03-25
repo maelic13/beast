@@ -1,3 +1,11 @@
+v3.3.0
+- improve GitHub actions
+- update supported platforms
+- add support for python 3.12+
+- remove neural net training, move to net_trainer repository
+- added the strongest neural network
+- improved neural model file resolution and missing-model error reporting
+
 v3.2.4
 - fix classical evaluation king bonus
 - fix classical evaluation bishop bonus
