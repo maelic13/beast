@@ -7,6 +7,9 @@ on:
 permissions:
   contents: write
 
+env:
+  PACKAGE_NAME: beast_chess
+
 jobs:
   build:
     name: Build ${{ matrix.os_name }} ${{ matrix.arch }}
@@ -53,12 +56,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install ".[build]"
 
-      - name: Write release version into package
+      - name: Freeze release version into package
         shell: pwsh
         run: >
-          python -c 'from pathlib import Path; import tomllib; version =
-          tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"];
-          Path("src/beast_chess/_version.py").write_text(f"__version__ = \"{version}\"\n", encoding="utf-8")'
+          python -c 'from pathlib import Path; import importlib.util;
+          spec = importlib.util.spec_from_file_location("version_module", Path("src") / "${{ env.PACKAGE_NAME }}" / "_version.py");
+          module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module);
+          version = module.get_base_version();
+          Path("src/${{ env.PACKAGE_NAME }}/_version.py").write_text(f"__version__ = \"{version}\"\n", encoding="utf-8")'
 
       - name: Build executable with PyInstaller
         run: |

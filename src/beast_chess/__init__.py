@@ -1,3 +1,1 @@
-from ._version import _get_source_version
-
-__version__ = _get_source_version() or "dev"
+from ._version import __version__ as __version__
