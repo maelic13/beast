@@ -1,3 +1,6 @@
+v3.3.1
+- fix versioning
+
 v3.3.0
 - improve GitHub actions
 - update supported platforms
