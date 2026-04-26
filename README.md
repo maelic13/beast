@@ -19,6 +19,11 @@ Release assets include:
 - standalone executables for Windows (x64, arm64), macOS (arm64) and Linux (x64, arm64).
 - the latest bundled neural-network model as a separate `.onnx` asset
 
+## macOS permissions
+To run on macOS, use these two command to allow the executable to run
+1. ```xattr -d com.apple.quarantine <path_to_executable>```
+2. ```chmod +x <path_to_executable>```
+
 ## Requirements
 
 - Python 3.12 or newer
