@@ -1,5 +1,5 @@
 from copy import deepcopy
-from multiprocessing import Queue
+from queue import Queue
 
 from beast_chess.infra import Constants, EngineCommand, SearchOptions
 

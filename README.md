@@ -58,10 +58,10 @@ pip install ".[build]"
 3. Build the executable:
 
 ```bash
-pyinstaller --clean --onefile --name beast --optimize=2 src/beast_chess/main.py
+pyinstaller --clean --onefile --optimize=2 --noupx --name beast src/beast_chess/main.py
 ```
 
-The executable will be created in `dist` folder.
+The executable will be created in the `dist` folder as `beast` on macOS/Linux or `beast.exe` on Windows.
 
 ## Neural Network Evaluation
 

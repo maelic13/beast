@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beast-chess"
-version = "3.3.2"
+version = "3.3.3"
 authors = [{name = "Miloslav Macurek"}]
 description = "Beast - UCI Chess Engine"
 requires-python = ">=3.12"
@@ -14,17 +14,17 @@ readme = "README.md"
 
 dependencies = [
     "chess~=1.11.2",
-    "numpy~=2.4.3",
-    "onnxruntime~=1.24.4",
+    "numpy~=2.4.4",
+    "onnxruntime~=1.25.1",
 ]
 
 [project.optional-dependencies]
 build = [
-    "pyinstaller~=6.19.0",
+    "pyinstaller~=6.20.0",
 ]
 
 dev = [
-    "ruff~=0.15.7",
+    "ruff~=0.15.12",
 ]
 
 [project.scripts]

@@ -43,7 +43,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.14"
+          python-version: "3.13"
           architecture: ${{ matrix.arch }}
           cache: pip
           cache-dependency-path: pyproject.toml
@@ -55,7 +55,88 @@ jobs:
 
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --clean --onefile --name beast --optimize=2 src/beast_chess/main.py
+          pyinstaller --clean --onefile --optimize=2 --noupx --name beast src/beast_chess/main.py
+
+      - name: Smoke test executable
+        shell: bash
+        run: |
+          python - <<'PY'
+          import queue
+          import subprocess
+          import sys
+          import threading
+          import time
+          from pathlib import Path
+
+          executable = (Path("dist") / "beast${{ matrix.ext }}").resolve()
+          process = subprocess.Popen(
+              [str(executable)],
+              cwd=executable.parent,
+              stdin=subprocess.PIPE,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.STDOUT,
+              text=True,
+              bufsize=1,
+          )
+
+          output: list[str] = []
+          output_queue: queue.Queue[str] = queue.Queue()
+
+          def read_output() -> None:
+              assert process.stdout is not None
+              for line in process.stdout:
+                  output_queue.put(line.rstrip("\n"))
+
+          reader = threading.Thread(target=read_output, daemon=True)
+          reader.start()
+
+          def fail(message: str) -> None:
+              print(message, file=sys.stderr)
+              print("----- engine output -----", file=sys.stderr)
+              print("\n".join(output), file=sys.stderr)
+              print("----- end engine output -----", file=sys.stderr)
+              try:
+                  process.kill()
+              except OSError:
+                  pass
+              raise SystemExit(1)
+
+          def send(command: str) -> None:
+              assert process.stdin is not None
+              process.stdin.write(command + "\n")
+              process.stdin.flush()
+
+          def wait_for(description: str, predicate, timeout: float) -> str:
+              deadline = time.monotonic() + timeout
+              while time.monotonic() < deadline:
+                  if process.poll() is not None:
+                      fail(f"Engine exited before {description}. Exit code: {process.returncode}")
+                  try:
+                      line = output_queue.get(timeout=0.1)
+                  except queue.Empty:
+                      continue
+                  output.append(line)
+                  if predicate(line):
+                      return line
+              fail(f"Timed out waiting for {description}.")
+
+          try:
+              send("uci")
+              wait_for("uciok", lambda line: line == "uciok", 10)
+              send("isready")
+              wait_for("readyok", lambda line: line == "readyok", 10)
+              send("position startpos")
+              send("go depth 2")
+              wait_for("bestmove", lambda line: line.startswith("bestmove "), 30)
+              send("quit")
+              try:
+                  process.wait(timeout=10)
+              except subprocess.TimeoutExpired:
+                  fail("Engine did not exit after quit.")
+          finally:
+              if process.poll() is None:
+                  process.kill()
+          PY
 
       - name: Upload binary to GitHub release
         shell: bash

@@ -1,8 +1,8 @@
 import operator
 from collections.abc import Iterable, Iterator
-from multiprocessing import Event, Queue
+from queue import Queue
 from random import choice
-from threading import Timer
+from threading import Event, Timer
 from time import time
 
 from chess import PAWN, Board, Move
@@ -147,7 +147,8 @@ class Engine:
         """
         # start with a random move choice, to be used in case of timeout before
         # the first depth is reached
-        moves: list[Move] = [choice(list(board.legal_moves))]
+        legal_moves = list(board.legal_moves)
+        moves: list[Move] = [choice(legal_moves)] if legal_moves else []
         depth = 0
         search_started = time() - 0.0001
         self._nodes_searched = 0
@@ -168,7 +169,7 @@ class Engine:
                 flush=True,
             )
 
-        print(f"bestmove {moves[0].uci()}", flush=True)
+        print(f"bestmove {moves[0].uci() if moves else '0000'}", flush=True)
 
     def _negamax(
         self, board: Board, depth: int, alpha: float, beta: float

@@ -1,3 +1,10 @@
+v3.3.3
+- switch to Threading for main search
+- update python packages
+- switch to Python 3.13 for release builds
+- add smoke test for release builds
+- fix crash on no legal moves or game end by repetition
+
 v3.3.2
 - fix versioning for local builds
 
