@@ -1,14 +1,12 @@
 import sys
 from pathlib import Path
 
-from beast_chess import __version__
-
 
 class Constants:
     # engine info
     AUTHOR = "Miloslav Macurek"
     ENGINE_NAME = "Beast"
-    ENGINE_VERSION = __version__
+    ENGINE_VERSION = "3.3.2"
     DEFAULT_MODEL_FILE = "v1_model2.onnx"
 
     # constants

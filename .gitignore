@@ -17,4 +17,5 @@ target/
 *.h5
 *.pgn
 *.pyc
+*.spec
 Cargo.lock
