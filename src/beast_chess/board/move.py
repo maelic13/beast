@@ -32,7 +32,7 @@ def encode_move(
     if promotion != NO_PIECE:
         flags |= PROMOTION
     return Move(
-        source | (target << _TO_SHIFT) | (promotion << _PROMOTION_SHIFT) | (flags << _FLAGS_SHIFT)
+        source | (target << _TO_SHIFT) | (promotion << _PROMOTION_SHIFT) | (flags << _FLAGS_SHIFT),
     )
 
 

@@ -1,4 +1,3 @@
-# ruff: noqa: PT009
 """Board performance benchmarks — mirrors beast2's test_board_performance.py.
 
 Tests the operations that dominate a chess engine's search loop:
@@ -9,6 +8,8 @@ Tests the operations that dominate a chess engine's search loop:
   5. Perft(4) startpos       — end-to-end pipeline throughput
   6. Game simulation         — realistic 2-ply search-like traversal
 """
+
+# ruff: noqa: PT009
 
 from __future__ import annotations
 
@@ -90,7 +91,7 @@ class BoardPerformanceTest(unittest.TestCase):
             print(
                 f"{result.label:20} "
                 f"{result.operations_per_second:>12,.0f} ops/s "
-                f"({result.operations:>9,} ops in {result.seconds:.3f}s)"
+                f"({result.operations:>9,} ops in {result.seconds:.3f}s)",
             )
 
         # Minimum viable thresholds (should not regress below these)

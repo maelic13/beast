@@ -2,8 +2,7 @@ import numpy as np
 
 
 def fen_to_input(fen: str) -> np.ndarray:  # noqa: C901, PLR0912
-    """
-    Convert board representation in fen format to input for neural network.
+    """Convert board representation in fen format to input for neural network.
     :param fen: board representation
     :return: input for neural network
     """

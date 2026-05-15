@@ -11,7 +11,8 @@ class UciProtocol:
 
     def uci_loop(self) -> None:  # noqa: C901
         print(
-            f"{Constants.ENGINE_NAME} {Constants.ENGINE_VERSION} by {Constants.AUTHOR}", flush=True
+            f"{Constants.ENGINE_NAME} {Constants.ENGINE_VERSION} by {Constants.AUTHOR}",
+            flush=True,
         )
 
         while True:
@@ -74,8 +75,9 @@ class UciProtocol:
         self._search_options.set_option(args)
 
     def new_game(self) -> None:
-        """Reset search options for new game."""
+        """Reset search options and engine tables for new game."""
         self._search_options.reset()
+        self._queue.put(EngineCommand(new_game=True))
 
     def position(self, args: list[str]) -> None:
         """Set new position to search options."""

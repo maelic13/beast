@@ -150,6 +150,36 @@ BISHOP_RAYS = tuple(_sliding_attacks(square, 0, BISHOP_DIRECTIONS) for square in
 ROOK_RAYS = tuple(_sliding_attacks(square, 0, ROOK_DIRECTIONS) for square in range(64))
 
 
+def _between_squares(source: int, target: int) -> int:
+    source_rank, source_file = divmod(source, 8)
+    target_rank, target_file = divmod(target, 8)
+    rank_delta = 0 if target_rank == source_rank else (1 if target_rank > source_rank else -1)
+    file_delta = 0 if target_file == source_file else (1 if target_file > source_file else -1)
+
+    if rank_delta != 0 and file_delta != 0:
+        if abs(target_rank - source_rank) != abs(target_file - source_file):
+            return 0
+    elif rank_delta == 0 and file_delta == 0:
+        return 0
+
+    between = 0
+    rank = source_rank + rank_delta
+    file_index = source_file + file_delta
+    while 0 <= rank < 8 and 0 <= file_index < 8:
+        square = rank * 8 + file_index
+        if square == target:
+            break
+        between |= BB_SQUARES[square]
+        rank += rank_delta
+        file_index += file_delta
+    return between
+
+
+BETWEEN = tuple(
+    tuple(_between_squares(source, target) for target in range(64)) for source in range(64)
+)
+
+
 def bishop_attacks(square: int, occupied: int) -> int:
     return BISHOP_ATTACKS[square][occupied & BISHOP_MASKS[square]]
 

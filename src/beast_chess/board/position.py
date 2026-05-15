@@ -8,10 +8,15 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 from .attacks import (
+    BETWEEN,
+    BISHOP_ATTACKS,
+    BISHOP_MASKS,
     BISHOP_RAYS,
     KING_ATTACKS,
     KNIGHT_ATTACKS,
     PAWN_ATTACKS,
+    ROOK_ATTACKS,
+    ROOK_MASKS,
     ROOK_RAYS,
     bishop_attacks,
     iter_bits,
@@ -69,7 +74,6 @@ from .constants import (
     opposite,
     parse_square,
     piece_code,
-    piece_color,
     piece_symbol,
     piece_type,
     square_name,
@@ -83,15 +87,9 @@ from .move import (
     PROMOTION,
     Move,
     encode_move,
-    from_square,
-    is_en_passant,
     parse_uci_squares,
     same_move,
-    to_square,
     uci,
-)
-from .move import (
-    is_capture as move_is_capture,
 )
 from .zobrist import CASTLING_KEYS, EN_PASSANT_FILE_KEYS, PIECE_KEYS, SIDE_TO_MOVE_KEY
 
@@ -109,9 +107,11 @@ class _UndoState:
     zobrist_key: int
 
 
-class Board:  # noqa: PLR0904
+class Board:
     __slots__ = (
         "_castling_rights",
+        "_check_cache_key",
+        "_check_cache_value",
         "_ep_square",
         "_fullmove_number",
         "_halfmove_clock",
@@ -140,6 +140,8 @@ class Board:  # noqa: PLR0904
         self._zobrist_key = 0
         self._history: list[_UndoState] = []
         self._key_history: list[int] = []
+        self._check_cache_key: int | None = None
+        self._check_cache_value = False
         self.set_fen(fen)
 
     @classmethod
@@ -158,6 +160,8 @@ class Board:  # noqa: PLR0904
         board._zobrist_key = 0
         board._history = []
         board._key_history = []
+        board._check_cache_key = None
+        board._check_cache_value = False
         return board
 
     @classmethod
@@ -183,6 +187,8 @@ class Board:  # noqa: PLR0904
         board._zobrist_key = self._zobrist_key
         board._history = self._history.copy() if stack else []
         board._key_history = self._key_history.copy() if stack else [self._zobrist_key]
+        board._check_cache_key = None
+        board._check_cache_value = False
         return board
 
     @property
@@ -222,14 +228,6 @@ class Board:  # noqa: PLR0904
         return self._occupancy_by_color[WHITE], self._occupancy_by_color[BLACK]
 
     @property
-    def legal_moves(self) -> tuple[Move, ...]:
-        return tuple(self.generate_legal_moves())
-
-    @property
-    def pseudo_legal_moves(self) -> tuple[Move, ...]:
-        return tuple(self.generate_pseudo_legal_moves())
-
-    @property
     def move_stack(self) -> tuple[Move, ...]:
         return tuple(state[0] for state in self._history)
 
@@ -253,6 +251,8 @@ class Board:  # noqa: PLR0904
         self._fullmove_number = int(parts[5]) if len(parts) > 5 else 1
         self._zobrist_key = 0
         self._history = []
+        self._check_cache_key = None
+        self._check_cache_value = False
 
         self._set_board_fen(parts[0])
         self._side_to_move = WHITE if parts[1] == "w" else BLACK
@@ -354,9 +354,6 @@ class Board:  # noqa: PLR0904
     def piece_type_at(self, square: int) -> int:
         return piece_type(self._squares[square])
 
-    def piece_map(self) -> dict[int, int]:
-        return {square: piece for square, piece in enumerate(self._squares) if piece != NO_PIECE}
-
     def pieces(self, piece: int, color: int) -> int:
         return self._piece_bitboards[piece_code(color, piece)]
 
@@ -440,18 +437,54 @@ class Board:  # noqa: PLR0904
             return True
         if KING_ATTACKS[square] & piece_bitboards[KING + offset]:
             return True
-        if bishop_attacks(square, occupied) & (
-            piece_bitboards[BISHOP + offset] | piece_bitboards[QUEEN + offset]
+        bishops_queens = piece_bitboards[BISHOP + offset] | piece_bitboards[QUEEN + offset]
+        if (
+            bishops_queens
+            and BISHOP_ATTACKS[square][occupied & BISHOP_MASKS[square]] & bishops_queens
         ):
             return True
+        rooks_queens = piece_bitboards[ROOK + offset] | piece_bitboards[QUEEN + offset]
         return bool(
-            rook_attacks(square, occupied)
-            & (piece_bitboards[ROOK + offset] | piece_bitboards[QUEEN + offset])
+            rooks_queens and ROOK_ATTACKS[square][occupied & ROOK_MASKS[square]] & rooks_queens,
         )
 
-    def is_check(self) -> bool:
-        king = self.king_square(self._side_to_move)
-        return king != NO_SQUARE and self.is_square_attacked(king, opposite(self._side_to_move))
+    def is_check(self) -> bool:  # noqa: PLR0911
+        if self._check_cache_key == self._zobrist_key:
+            return self._check_cache_value
+
+        side = self._side_to_move
+        king = self._king_squares[side]
+        if king == NO_SQUARE:
+            self._check_cache_key = self._zobrist_key
+            self._check_cache_value = False
+            return False
+        piece_bitboards = self._piece_bitboards
+        offset = (side ^ 1) * 6
+        occupied = self._occupied
+        if PAWN_ATTACKS[side][king] & piece_bitboards[PAWN + offset]:
+            self._check_cache_key = self._zobrist_key
+            self._check_cache_value = True
+            return True
+        if KNIGHT_ATTACKS[king] & piece_bitboards[KNIGHT + offset]:
+            self._check_cache_key = self._zobrist_key
+            self._check_cache_value = True
+            return True
+        if KING_ATTACKS[king] & piece_bitboards[KING + offset]:
+            self._check_cache_key = self._zobrist_key
+            self._check_cache_value = True
+            return True
+        bishops_queens = piece_bitboards[BISHOP + offset] | piece_bitboards[QUEEN + offset]
+        if bishops_queens and BISHOP_ATTACKS[king][occupied & BISHOP_MASKS[king]] & bishops_queens:
+            self._check_cache_key = self._zobrist_key
+            self._check_cache_value = True
+            return True
+        rooks_queens = piece_bitboards[ROOK + offset] | piece_bitboards[QUEEN + offset]
+        result = bool(
+            rooks_queens and ROOK_ATTACKS[king][occupied & ROOK_MASKS[king]] & rooks_queens,
+        )
+        self._check_cache_key = self._zobrist_key
+        self._check_cache_value = result
+        return result
 
     def _checkers_to_king(self) -> int:
         us = self._side_to_move
@@ -459,18 +492,18 @@ class Board:  # noqa: PLR0904
         king = self._king_squares[us]
         occupied = self._occupied
         piece_bitboards = self._piece_bitboards
-        return (
-            (PAWN_ATTACKS[us][king] & piece_bitboards[PAWN + them_offset])
-            | (KNIGHT_ATTACKS[king] & piece_bitboards[KNIGHT + them_offset])
-            | (
-                bishop_attacks(king, occupied)
-                & (piece_bitboards[BISHOP + them_offset] | piece_bitboards[QUEEN + them_offset])
-            )
-            | (
-                rook_attacks(king, occupied)
-                & (piece_bitboards[ROOK + them_offset] | piece_bitboards[QUEEN + them_offset])
-            )
+        checkers = (PAWN_ATTACKS[us][king] & piece_bitboards[PAWN + them_offset]) | (
+            KNIGHT_ATTACKS[king] & piece_bitboards[KNIGHT + them_offset]
         )
+        bishops_queens = (
+            piece_bitboards[BISHOP + them_offset] | piece_bitboards[QUEEN + them_offset]
+        )
+        if bishops_queens:
+            checkers |= BISHOP_ATTACKS[king][occupied & BISHOP_MASKS[king]] & bishops_queens
+        rooks_queens = piece_bitboards[ROOK + them_offset] | piece_bitboards[QUEEN + them_offset]
+        if rooks_queens:
+            checkers |= ROOK_ATTACKS[king][occupied & ROOK_MASKS[king]] & rooks_queens
+        return checkers
 
     @staticmethod
     def _between(source: int, target: int) -> int:
@@ -503,54 +536,38 @@ class Board:  # noqa: PLR0904
             return 0
 
         pinned = 0
-        king_rank, king_file = divmod(king, 8)
-        enemy = color ^ 1
-        squares = self._squares
-        directions = (
-            (1, 0, ROOK, QUEEN),
-            (-1, 0, ROOK, QUEEN),
-            (0, 1, ROOK, QUEEN),
-            (0, -1, ROOK, QUEEN),
-            (1, 1, BISHOP, QUEEN),
-            (1, -1, BISHOP, QUEEN),
-            (-1, 1, BISHOP, QUEEN),
-            (-1, -1, BISHOP, QUEEN),
+        enemy_offset = (color ^ 1) * 6
+        piece_bitboards = self._piece_bitboards
+        occupied = self._occupied
+        own = self._occupancy_by_color[color]
+        between = BETWEEN[king]
+
+        snipers = BISHOP_RAYS[king] & (
+            piece_bitboards[BISHOP + enemy_offset] | piece_bitboards[QUEEN + enemy_offset]
         )
+        while snipers:
+            sniper_bit = snipers & -snipers
+            blockers = between[sniper_bit.bit_length() - 1] & occupied
+            if blockers and not (blockers & (blockers - 1)):
+                pinned |= blockers & own
+            snipers ^= sniper_bit
 
-        for rank_delta, file_delta, slider, queen in directions:
-            blocker = NO_SQUARE
-            rank = king_rank + rank_delta
-            file_index = king_file + file_delta
-            while 0 <= rank < 8 and 0 <= file_index < 8:
-                square = rank * 8 + file_index
-                piece = squares[square]
-                if piece == NO_PIECE:
-                    rank += rank_delta
-                    file_index += file_delta
-                    continue
-
-                piece_is_black = piece > KING
-                piece_color_value = BLACK if piece_is_black else WHITE
-                if blocker == NO_SQUARE:
-                    if piece_color_value == color:
-                        blocker = square
-                        rank += rank_delta
-                        file_index += file_delta
-                        continue
-                    break
-
-                if piece_color_value == color:
-                    break
-                piece_kind = piece - 6 if piece_is_black else piece
-                if piece_color_value == enemy and (piece_kind == slider or piece_kind == queen):  # noqa: PLR1714, SIM109
-                    pinned |= BB_SQUARES[blocker]
-                break
+        snipers = ROOK_RAYS[king] & (
+            piece_bitboards[ROOK + enemy_offset] | piece_bitboards[QUEEN + enemy_offset]
+        )
+        while snipers:
+            sniper_bit = snipers & -snipers
+            blockers = between[sniper_bit.bit_length() - 1] & occupied
+            if blockers and not (blockers & (blockers - 1)):
+                pinned |= blockers & own
+            snipers ^= sniper_bit
         return pinned
 
-    def generate_pseudo_legal_moves(  # noqa: C901, PLR0912, PLR0914, PLR0915
+    def generate_pseudo_legal_moves(  # noqa: C901, PLR0912, PLR0915
         self,
         *,
         captures_only: bool = False,
+        legal_king_moves: bool = False,
     ) -> list[Move]:
         us = self._side_to_move
         them = us ^ 1
@@ -571,42 +588,137 @@ class Board:  # noqa: PLR0904
         if us == WHITE:
             if not captures_only:
                 one_step = (pawns << 8) & empty
-                for target in iter_bits(one_step & ~BB_RANK_8):
+                targets = one_step & ~BB_RANK_8
+                while targets:
+                    target_bit = targets & -targets
+                    target = target_bit.bit_length() - 1
                     append((target - 8) | (target << 6))
-                for target in iter_bits(one_step & BB_RANK_8):
+                    targets ^= target_bit
+                targets = one_step & BB_RANK_8
+                while targets:
+                    target_bit = targets & -targets
+                    target = target_bit.bit_length() - 1
                     source = target - 8
-                    for promotion in PROMOTION_PIECES:
-                        append(source | (target << 6) | (promotion << 12) | (PROMOTION << 15))
+                    base = source | (target << 6) | (PROMOTION << 15)
+                    append(base | (QUEEN << 12))
+                    append(base | (ROOK << 12))
+                    append(base | (BISHOP << 12))
+                    append(base | (KNIGHT << 12))
+                    targets ^= target_bit
                 two_step = ((one_step & BB_RANK_3) << 8) & empty
-                for target in iter_bits(two_step):
+                while two_step:
+                    target_bit = two_step & -two_step
+                    target = target_bit.bit_length() - 1
                     append((target - 16) | (target << 6) | (DOUBLE_PAWN_PUSH << 15))
+                    two_step ^= target_bit
 
             left_captures = ((pawns & ~BB_FILE_A) << 7) & enemy_targets
             right_captures = ((pawns & ~BB_FILE_H) << 9) & enemy_targets
-            self._append_pawn_captures(moves, left_captures, -7)
-            self._append_pawn_captures(moves, right_captures, -9)
+            normal_targets = left_captures & ~(BB_RANK_1 | BB_RANK_8)
+            while normal_targets:
+                target_bit = normal_targets & -normal_targets
+                target = target_bit.bit_length() - 1
+                append((target - 7) | (target << 6) | (CAPTURE << 15))
+                normal_targets ^= target_bit
+            promotion_targets = left_captures & (BB_RANK_1 | BB_RANK_8)
+            while promotion_targets:
+                target_bit = promotion_targets & -promotion_targets
+                target = target_bit.bit_length() - 1
+                source = target - 7
+                base = source | (target << 6) | ((CAPTURE | PROMOTION) << 15)
+                append(base | (QUEEN << 12))
+                append(base | (ROOK << 12))
+                append(base | (BISHOP << 12))
+                append(base | (KNIGHT << 12))
+                promotion_targets ^= target_bit
+            normal_targets = right_captures & ~(BB_RANK_1 | BB_RANK_8)
+            while normal_targets:
+                target_bit = normal_targets & -normal_targets
+                target = target_bit.bit_length() - 1
+                append((target - 9) | (target << 6) | (CAPTURE << 15))
+                normal_targets ^= target_bit
+            promotion_targets = right_captures & (BB_RANK_1 | BB_RANK_8)
+            while promotion_targets:
+                target_bit = promotion_targets & -promotion_targets
+                target = target_bit.bit_length() - 1
+                source = target - 9
+                base = source | (target << 6) | ((CAPTURE | PROMOTION) << 15)
+                append(base | (QUEEN << 12))
+                append(base | (ROOK << 12))
+                append(base | (BISHOP << 12))
+                append(base | (KNIGHT << 12))
+                promotion_targets ^= target_bit
         else:
             if not captures_only:
                 one_step = (pawns >> 8) & empty
-                for target in iter_bits(one_step & ~BB_RANK_1):
+                targets = one_step & ~BB_RANK_1
+                while targets:
+                    target_bit = targets & -targets
+                    target = target_bit.bit_length() - 1
                     append((target + 8) | (target << 6))
-                for target in iter_bits(one_step & BB_RANK_1):
+                    targets ^= target_bit
+                targets = one_step & BB_RANK_1
+                while targets:
+                    target_bit = targets & -targets
+                    target = target_bit.bit_length() - 1
                     source = target + 8
-                    for promotion in PROMOTION_PIECES:
-                        append(source | (target << 6) | (promotion << 12) | (PROMOTION << 15))
+                    base = source | (target << 6) | (PROMOTION << 15)
+                    append(base | (QUEEN << 12))
+                    append(base | (ROOK << 12))
+                    append(base | (BISHOP << 12))
+                    append(base | (KNIGHT << 12))
+                    targets ^= target_bit
                 two_step = ((one_step & BB_RANK_6) >> 8) & empty
-                for target in iter_bits(two_step):
+                while two_step:
+                    target_bit = two_step & -two_step
+                    target = target_bit.bit_length() - 1
                     append((target + 16) | (target << 6) | (DOUBLE_PAWN_PUSH << 15))
+                    two_step ^= target_bit
 
             left_captures = ((pawns & ~BB_FILE_A) >> 9) & enemy_targets
             right_captures = ((pawns & ~BB_FILE_H) >> 7) & enemy_targets
-            self._append_pawn_captures(moves, left_captures, 9)
-            self._append_pawn_captures(moves, right_captures, 7)
+            normal_targets = left_captures & ~(BB_RANK_1 | BB_RANK_8)
+            while normal_targets:
+                target_bit = normal_targets & -normal_targets
+                target = target_bit.bit_length() - 1
+                append((target + 9) | (target << 6) | (CAPTURE << 15))
+                normal_targets ^= target_bit
+            promotion_targets = left_captures & (BB_RANK_1 | BB_RANK_8)
+            while promotion_targets:
+                target_bit = promotion_targets & -promotion_targets
+                target = target_bit.bit_length() - 1
+                source = target + 9
+                base = source | (target << 6) | ((CAPTURE | PROMOTION) << 15)
+                append(base | (QUEEN << 12))
+                append(base | (ROOK << 12))
+                append(base | (BISHOP << 12))
+                append(base | (KNIGHT << 12))
+                promotion_targets ^= target_bit
+            normal_targets = right_captures & ~(BB_RANK_1 | BB_RANK_8)
+            while normal_targets:
+                target_bit = normal_targets & -normal_targets
+                target = target_bit.bit_length() - 1
+                append((target + 7) | (target << 6) | (CAPTURE << 15))
+                normal_targets ^= target_bit
+            promotion_targets = right_captures & (BB_RANK_1 | BB_RANK_8)
+            while promotion_targets:
+                target_bit = promotion_targets & -promotion_targets
+                target = target_bit.bit_length() - 1
+                source = target + 7
+                base = source | (target << 6) | ((CAPTURE | PROMOTION) << 15)
+                append(base | (QUEEN << 12))
+                append(base | (ROOK << 12))
+                append(base | (BISHOP << 12))
+                append(base | (KNIGHT << 12))
+                promotion_targets ^= target_bit
 
         if self._ep_square != NO_SQUARE:
             attackers = PAWN_ATTACKS[them][self._ep_square] & pawns
-            for source in iter_bits(attackers):
+            while attackers:
+                source_bit = attackers & -attackers
+                source = source_bit.bit_length() - 1
                 append(source | (self._ep_square << 6) | ((CAPTURE | EN_PASSANT) << 15))
+                attackers ^= source_bit
 
         pieces_to_scan = piece_bitboards[KNIGHT + us_offset]
         while pieces_to_scan:
@@ -627,7 +739,7 @@ class Board:  # noqa: PLR0904
         while pieces_to_scan:
             source_bit = pieces_to_scan & -pieces_to_scan
             source = source_bit.bit_length() - 1
-            targets = bishop_attacks(source, occupied) & ~blocked
+            targets = BISHOP_ATTACKS[source][occupied & BISHOP_MASKS[source]] & ~blocked
             if captures_only:
                 targets &= enemy_targets
             while targets:
@@ -642,7 +754,7 @@ class Board:  # noqa: PLR0904
         while pieces_to_scan:
             source_bit = pieces_to_scan & -pieces_to_scan
             source = source_bit.bit_length() - 1
-            targets = rook_attacks(source, occupied) & ~blocked
+            targets = ROOK_ATTACKS[source][occupied & ROOK_MASKS[source]] & ~blocked
             if captures_only:
                 targets &= enemy_targets
             while targets:
@@ -657,7 +769,10 @@ class Board:  # noqa: PLR0904
         while pieces_to_scan:
             source_bit = pieces_to_scan & -pieces_to_scan
             source = source_bit.bit_length() - 1
-            targets = queen_attacks(source, occupied) & ~blocked
+            targets = (
+                BISHOP_ATTACKS[source][occupied & BISHOP_MASKS[source]]
+                | ROOK_ATTACKS[source][occupied & ROOK_MASKS[source]]
+            ) & ~blocked
             if captures_only:
                 targets &= enemy_targets
             while targets:
@@ -679,12 +794,14 @@ class Board:  # noqa: PLR0904
                 target_bit = targets & -targets
                 target = target_bit.bit_length() - 1
                 flags = CAPTURE if target_bit & enemy_targets else 0
-                append(source | (target << 6) | (flags << 15))
+                move = source | (target << 6) | (flags << 15)
+                if not legal_king_moves or self._is_safe_after(move):
+                    append(move)
                 targets ^= target_bit
             pieces_to_scan ^= source_bit
 
         if not captures_only:
-            moves.extend(self._generate_castling_moves(us))
+            self._append_castling_moves(moves, us)
 
         return moves
 
@@ -704,7 +821,7 @@ class Board:  # noqa: PLR0904
             source = target + source_delta
             for promotion in PROMOTION_PIECES:
                 moves.append(  # noqa: PERF401
-                    source | (target << 6) | (promotion << 12) | ((CAPTURE | PROMOTION) << 15)
+                    source | (target << 6) | (promotion << 12) | ((CAPTURE | PROMOTION) << 15),
                 )
             promotion_targets ^= target_bit
 
@@ -819,10 +936,16 @@ class Board:  # noqa: PLR0904
             yield encode_move(source, target, flags=flags)
 
     def _generate_castling_moves(self, color: int) -> Iterator[Move]:
+        moves: list[Move] = []
+        self._append_castling_moves(moves, color)
+        yield from moves
+
+    def _append_castling_moves(self, moves: list[Move], color: int) -> None:
+        append = moves.append
         enemy = color ^ 1
         if color == WHITE:
             if (
-                self._castling_rights & WHITE_KINGSIDE  # noqa: PLR0916
+                self._castling_rights & WHITE_KINGSIDE
                 and self._squares[E1] == KING
                 and self._squares[H1] == ROOK
                 and not (self._occupied & (BB_SQUARES[F1] | BB_SQUARES[G1]))
@@ -830,9 +953,9 @@ class Board:  # noqa: PLR0904
                 and not self.is_square_attacked(F1, enemy)
                 and not self.is_square_attacked(G1, enemy)
             ):
-                yield encode_move(E1, G1, flags=CASTLING)
+                append(E1 | (G1 << 6) | (CASTLING << 15))
             if (
-                self._castling_rights & WHITE_QUEENSIDE  # noqa: PLR0916
+                self._castling_rights & WHITE_QUEENSIDE
                 and self._squares[E1] == KING
                 and self._squares[A1] == ROOK
                 and not (self._occupied & (BB_SQUARES[B1] | BB_SQUARES[C1] | BB_SQUARES[D1]))
@@ -840,11 +963,11 @@ class Board:  # noqa: PLR0904
                 and not self.is_square_attacked(D1, enemy)
                 and not self.is_square_attacked(C1, enemy)
             ):
-                yield encode_move(E1, C1, flags=CASTLING)
+                append(E1 | (C1 << 6) | (CASTLING << 15))
             return
 
         if (
-            self._castling_rights & BLACK_KINGSIDE  # noqa: PLR0916
+            self._castling_rights & BLACK_KINGSIDE
             and self._squares[E8] == KING + 6
             and self._squares[H8] == ROOK + 6
             and not (self._occupied & (BB_SQUARES[F8] | BB_SQUARES[G8]))
@@ -852,9 +975,9 @@ class Board:  # noqa: PLR0904
             and not self.is_square_attacked(F8, enemy)
             and not self.is_square_attacked(G8, enemy)
         ):
-            yield encode_move(E8, G8, flags=CASTLING)
+            append(E8 | (G8 << 6) | (CASTLING << 15))
         if (
-            self._castling_rights & BLACK_QUEENSIDE  # noqa: PLR0916
+            self._castling_rights & BLACK_QUEENSIDE
             and self._squares[E8] == KING + 6
             and self._squares[A8] == ROOK + 6
             and not (self._occupied & (BB_SQUARES[B8] | BB_SQUARES[C8] | BB_SQUARES[D8]))
@@ -862,41 +985,73 @@ class Board:  # noqa: PLR0904
             and not self.is_square_attacked(D8, enemy)
             and not self.is_square_attacked(C8, enemy)
         ):
-            yield encode_move(E8, C8, flags=CASTLING)
+            append(E8 | (C8 << 6) | (CASTLING << 15))
 
     def generate_legal_moves(self, *, captures_only: bool = False) -> list[Move]:
         checkers = self._checkers_to_king()
         if checkers:
             return self._generate_evasions(checkers, captures_only=captures_only)
 
-        king = self._king_squares[self._side_to_move]
         pinned = self._pinned_pieces(self._side_to_move)
-        legal_moves = []
-        append = legal_moves.append
-        for move in self.generate_pseudo_legal_moves(captures_only=captures_only):
+        legal_moves = self.generate_pseudo_legal_moves(
+            captures_only=captures_only,
+            legal_king_moves=True,
+        )
+        if not pinned and self._ep_square == NO_SQUARE:
+            return legal_moves
+
+        write_index = 0
+        for move in legal_moves:
             move_value = int(move)
             source = move_value & 0x3F
-            if source == king or BB_SQUARES[source] & pinned or move_value >> 15 & EN_PASSANT:
-                if self._is_safe_after(move):
-                    append(move)
-            else:
-                append(move)
+            if (
+                BB_SQUARES[source] & pinned or move_value >> 15 & EN_PASSANT
+            ) and not self._is_safe_after(move):
+                continue
+            legal_moves[write_index] = move
+            write_index += 1
+        del legal_moves[write_index:]
         return legal_moves
 
     def generate_legal_captures(self) -> list[Move]:
-        return [
-            move for move in self._generate_pseudo_legal_captures() if self._is_safe_after(move)
-        ]
+        checkers = self._checkers_to_king()
+        if checkers:
+            return [
+                move for move in self._generate_pseudo_legal_captures() if self._is_safe_after(move)
+            ]
 
-    def _generate_pseudo_legal_captures(self) -> list[Move]:  # noqa: C901, PLR0912, PLR0914, PLR0915
+        pinned = self._pinned_pieces(self._side_to_move)
+        legal = self._generate_pseudo_legal_captures(legal_king_moves=True)
+        if not pinned and self._ep_square == NO_SQUARE:
+            return legal
+
+        write_index = 0
+        for move in legal:
+            move_value = int(move)
+            source = move_value & 0x3F
+            if (
+                BB_SQUARES[source] & pinned or move_value >> 15 & EN_PASSANT
+            ) and not self._is_safe_after(move):
+                continue
+            legal[write_index] = move
+            write_index += 1
+        del legal[write_index:]
+        return legal
+
+    def _generate_pseudo_legal_captures(  # noqa: C901, PLR0912, PLR0915
+        self,
+        *,
+        legal_king_moves: bool = False,
+    ) -> list[Move]:
         us = self._side_to_move
         them = us ^ 1
         us_offset = us * 6
         piece_bitboards = self._piece_bitboards
         enemy = self._occupancy_by_color[them] & ~piece_bitboards[KING + them * 6]
         occupied = self._occupied
-        moves: list[Move] = []
-        append = moves.append
+        legal_moves = []
+        moves: list[Move] = legal_moves
+        append = legal_moves.append
 
         pawns = piece_bitboards[PAWN + us_offset]
         if us == WHITE:
@@ -1002,7 +1157,7 @@ class Board:  # noqa: PLR0904
             source_bit = pieces_to_scan & -pieces_to_scan
             source = source_bit.bit_length() - 1
             if BISHOP_RAYS[source] & enemy:
-                targets = bishop_attacks(source, occupied) & enemy
+                targets = BISHOP_ATTACKS[source][occupied & BISHOP_MASKS[source]] & enemy
                 while targets:
                     target_bit = targets & -targets
                     target = target_bit.bit_length() - 1
@@ -1015,7 +1170,7 @@ class Board:  # noqa: PLR0904
             source_bit = pieces_to_scan & -pieces_to_scan
             source = source_bit.bit_length() - 1
             if ROOK_RAYS[source] & enemy:
-                targets = rook_attacks(source, occupied) & enemy
+                targets = ROOK_ATTACKS[source][occupied & ROOK_MASKS[source]] & enemy
                 while targets:
                     target_bit = targets & -targets
                     target = target_bit.bit_length() - 1
@@ -1029,9 +1184,9 @@ class Board:  # noqa: PLR0904
             source = source_bit.bit_length() - 1
             targets = 0
             if BISHOP_RAYS[source] & enemy:
-                targets |= bishop_attacks(source, occupied)
+                targets |= BISHOP_ATTACKS[source][occupied & BISHOP_MASKS[source]]
             if ROOK_RAYS[source] & enemy:
-                targets |= rook_attacks(source, occupied)
+                targets |= ROOK_ATTACKS[source][occupied & ROOK_MASKS[source]]
             targets &= enemy
             while targets:
                 target_bit = targets & -targets
@@ -1045,7 +1200,9 @@ class Board:  # noqa: PLR0904
         while targets:
             target_bit = targets & -targets
             target = target_bit.bit_length() - 1
-            append(source | (target << 6) | (CAPTURE << 15))
+            move = source | (target << 6) | (CAPTURE << 15)
+            if not legal_king_moves or self._is_safe_after(move):
+                append(move)
             targets ^= target_bit
 
         return moves
@@ -1079,7 +1236,7 @@ class Board:  # noqa: PLR0904
             return legal
 
         checker = (checkers & -checkers).bit_length() - 1
-        block_mask = self._between(king, checker) | BB_SQUARES[checker]
+        block_mask = BETWEEN[king][checker] | BB_SQUARES[checker]
 
         for move in self.generate_pseudo_legal_moves(captures_only=captures_only):
             move_value = int(move)
@@ -1099,7 +1256,7 @@ class Board:  # noqa: PLR0904
 
         return legal
 
-    def _is_safe_after(self, move: Move) -> bool:  # noqa: PLR0911, PLR0914
+    def _is_safe_after(self, move: Move) -> bool:  # noqa: PLR0911
         color = self._side_to_move
         move_value = int(move)
         source = move_value & 0x3F
@@ -1142,13 +1299,13 @@ class Board:  # noqa: PLR0904
         bishops_queens = (
             piece_bitboards[BISHOP + enemy_offset] | piece_bitboards[QUEEN + enemy_offset]
         ) & capture_mask
-        if bishops_queens and bishop_attacks(king, occupied) & bishops_queens:
+        if bishops_queens and BISHOP_ATTACKS[king][occupied & BISHOP_MASKS[king]] & bishops_queens:
             return False
 
         rooks_queens = (
             piece_bitboards[ROOK + enemy_offset] | piece_bitboards[QUEEN + enemy_offset]
         ) & capture_mask
-        return not (rooks_queens and rook_attacks(king, occupied) & rooks_queens)
+        return not (rooks_queens and ROOK_ATTACKS[king][occupied & ROOK_MASKS[king]] & rooks_queens)
 
     def is_legal(self, move: Move) -> bool:
         return any(same_move(move, legal_move) for legal_move in self.generate_legal_moves())
@@ -1188,7 +1345,7 @@ class Board:  # noqa: PLR0904
         self.push(move)
         return move
 
-    def push(self, move: Move) -> None:  # noqa: C901, PLR0912, PLR0914, PLR0915
+    def push(self, move: Move) -> None:  # noqa: C901, PLR0912, PLR0915
         if move == NULL_MOVE:
             self.push_null()
             return
@@ -1199,16 +1356,69 @@ class Board:  # noqa: PLR0904
         promotion = (move_value >> 12) & 0x7
         flags = move_value >> 15
         side = self._side_to_move
-        moved_piece = self._squares[source]
+        squares = self._squares
+        moved_piece = squares[source]
+        old_ep_square = self._ep_square
+        captured_piece_on_target = squares[target]
+        if (
+            flags in {0, DOUBLE_PAWN_PUSH}
+            and old_ep_square == NO_SQUARE
+            and captured_piece_on_target == NO_PIECE
+        ):
+            castling_rights = self._castling_rights
+            halfmove_clock = self._halfmove_clock
+            fullmove_number = self._fullmove_number
+            zobrist_key = self._zobrist_key
+            self._history.append((
+                move,
+                moved_piece,
+                NO_PIECE,
+                NO_SQUARE,
+                castling_rights,
+                old_ep_square,
+                halfmove_clock,
+                fullmove_number,
+                zobrist_key,
+            ))
+
+            move_bits = BB_SQUARES[source] | BB_SQUARES[target]
+            squares[source] = NO_PIECE
+            squares[target] = moved_piece
+            if moved_piece == KING or moved_piece == KING + 6:
+                self._king_squares[side] = target
+            self._piece_bitboards[moved_piece] ^= move_bits
+            self._occupancy_by_color[side] ^= move_bits
+            self._occupied ^= move_bits
+
+            zobrist_key ^= PIECE_KEYS[moved_piece][source] ^ PIECE_KEYS[moved_piece][target]
+            new_rights = (
+                castling_rights & CASTLING_RIGHTS_MASKS[source] & CASTLING_RIGHTS_MASKS[target]
+            )
+            if new_rights != castling_rights:
+                self._castling_rights = new_rights
+                zobrist_key ^= CASTLING_KEYS[castling_rights] ^ CASTLING_KEYS[new_rights]
+            self._halfmove_clock = (
+                0 if moved_piece == PAWN or moved_piece == PAWN + 6 else halfmove_clock + 1
+            )
+            if side == BLACK:
+                self._fullmove_number = fullmove_number + 1
+            side ^= 1
+            if flags == DOUBLE_PAWN_PUSH:
+                ep_square = (source + target) >> 1
+                self._ep_square = ep_square
+                if PAWN_ATTACKS[side ^ 1][ep_square] & self._piece_bitboards[PAWN + side * 6]:
+                    zobrist_key ^= EN_PASSANT_FILE_KEYS[file_of(ep_square)]
+            self._side_to_move = side
+            zobrist_key ^= SIDE_TO_MOVE_KEY
+            self._zobrist_key = zobrist_key
+            return
+
         captured_square = NO_SQUARE
         if flags & EN_PASSANT:
             captured_square = target - 8 if side == WHITE else target + 8
-        elif self._squares[target] != NO_PIECE:
+        elif squares[target] != NO_PIECE:
             captured_square = target
-        captured_piece = (
-            self._squares[captured_square] if captured_square != NO_SQUARE else NO_PIECE
-        )
-        old_ep_square = self._ep_square
+        captured_piece = squares[captured_square] if captured_square != NO_SQUARE else NO_PIECE
         state = (
             move,
             moved_piece,
@@ -1272,7 +1482,6 @@ class Board:  # noqa: PLR0904
             new_ep_hash_file = self._ep_hash_file(self._ep_square, self._side_to_move)
             if new_ep_hash_file != NO_SQUARE:
                 self._zobrist_key ^= EN_PASSANT_FILE_KEYS[new_ep_hash_file]
-        self._key_history.append(self._zobrist_key)
 
     def push_null(self) -> None:
         old_ep_hash_file = self._ep_hash_file(self._ep_square, self._side_to_move)
@@ -1295,12 +1504,9 @@ class Board:  # noqa: PLR0904
             self._fullmove_number += 1
         self._side_to_move = opposite(self._side_to_move)
         self._zobrist_key ^= SIDE_TO_MOVE_KEY
-        self._key_history.append(self._zobrist_key)
 
-    def pop(self) -> Move:  # noqa: PLR0914, PLR0915
+    def pop(self) -> Move:  # noqa: PLR0915
         state = self._history.pop()
-        if self._key_history:
-            self._key_history.pop()
 
         if state[0] == NULL_MOVE:
             self._side_to_move ^= 1
@@ -1316,6 +1522,25 @@ class Board:  # noqa: PLR0904
         target = (move_value >> 6) & 0x3F
         promotion = (move_value >> 12) & 0x7
         flags = move_value >> 15
+        if flags in {0, DOUBLE_PAWN_PUSH} and state[2] == NO_PIECE:
+            moved_piece = state[1]
+            move_color = self._side_to_move ^ 1
+            move_bits = BB_SQUARES[target] | BB_SQUARES[source]
+            self._squares[target] = NO_PIECE
+            self._squares[source] = moved_piece
+            if moved_piece == KING or moved_piece == KING + 6:
+                self._king_squares[move_color] = source
+            self._piece_bitboards[moved_piece] ^= move_bits
+            self._occupancy_by_color[move_color] ^= move_bits
+            self._occupied ^= move_bits
+            self._side_to_move = move_color
+            self._castling_rights = state[4]
+            self._ep_square = state[5]
+            self._halfmove_clock = state[6]
+            self._fullmove_number = state[7]
+            self._zobrist_key = state[8]
+            return state[0]
+
         if promotion:
             promoted_piece = self._squares[target]
             move_color = BLACK if promoted_piece > KING else WHITE
@@ -1390,45 +1615,6 @@ class Board:  # noqa: PLR0904
             case 58:
                 self._move_piece(piece_code(BLACK, ROOK), D8, A8)
 
-    def _captured_square(self, move: Move) -> int:
-        if is_en_passant(move):
-            return to_square(move) - 8 if self._side_to_move == WHITE else to_square(move) + 8
-        return to_square(move) if self._squares[to_square(move)] != NO_PIECE else NO_SQUARE
-
-    def _update_castling_rights(
-        self,
-        move: Move,
-        moved_piece: int,
-        captured_square: int,
-        captured_piece: int,
-    ) -> None:
-        old_rights = self._castling_rights
-        source = from_square(move)
-        if piece_type(moved_piece) == KING:
-            if piece_color(moved_piece) == WHITE:
-                self._castling_rights &= ~(WHITE_KINGSIDE | WHITE_QUEENSIDE)
-            else:
-                self._castling_rights &= ~(BLACK_KINGSIDE | BLACK_QUEENSIDE)
-        elif piece_type(moved_piece) == ROOK:
-            self._clear_rook_castling_right(source)
-
-        if captured_piece != NO_PIECE and piece_type(captured_piece) == ROOK:
-            self._clear_rook_castling_right(captured_square)
-
-        if old_rights != self._castling_rights:
-            self._zobrist_key ^= CASTLING_KEYS[old_rights] ^ CASTLING_KEYS[self._castling_rights]
-
-    def _clear_rook_castling_right(self, square: int) -> None:
-        match square:
-            case 0:
-                self._castling_rights &= ~WHITE_QUEENSIDE
-            case 7:
-                self._castling_rights &= ~WHITE_KINGSIDE
-            case 56:
-                self._castling_rights &= ~BLACK_QUEENSIDE
-            case 63:
-                self._castling_rights &= ~BLACK_KINGSIDE
-
     def _put_piece(self, piece: int, square: int) -> None:
         bit = BB_SQUARES[square]
         color = BLACK if piece > KING else WHITE
@@ -1472,59 +1658,40 @@ class Board:  # noqa: PLR0904
         )
         return file_of(ep_square) if attackers else NO_SQUARE
 
-    def is_capture(self, move: Move) -> bool:
-        return move_is_capture(move) or self._captured_square(move) != NO_SQUARE
-
-    def is_en_passant(self, move: Move) -> bool:  # noqa: PLR6301
-        return is_en_passant(move)
-
-    def gives_check(self, move: Move) -> bool:
-        self.push(move)
-        gives_check = self.is_check()
-        self.pop()
-        return gives_check
-
     def is_fifty_moves(self) -> bool:
         return self._halfmove_clock >= 100
 
     def is_repetition(self, count: int = 3) -> bool:
-        return self._key_history.count(self._zobrist_key) >= count
+        if count <= 1:
+            return True
+        if self._halfmove_clock < 4:
+            return False
 
-    def is_checkmate(self) -> bool:
-        return self.is_check() and not any(self.generate_legal_moves())
-
-    def is_stalemate(self) -> bool:
-        return not self.is_check() and not any(self.generate_legal_moves())
-
-    def is_game_over(self) -> bool:
-        return (
-            self.is_checkmate()
-            or self.is_stalemate()
-            or self.is_fifty_moves()
-            or self.is_repetition()
-            or self.has_insufficient_material()
-        )
+        repetitions = 1
+        current_index = len(self._history)
+        stop = max(-1, current_index - self._halfmove_clock - 1)
+        for index in range(current_index - 2, stop, -2):
+            if self._history[index][8] == self._zobrist_key:
+                repetitions += 1
+                if repetitions >= count:
+                    return True
+        return False
 
     def has_insufficient_material(self) -> bool:
+        piece_bitboards = self._piece_bitboards
         pawns_rooks_queens = (
-            self._piece_bitboards[piece_code(WHITE, PAWN)]
-            | self._piece_bitboards[piece_code(BLACK, PAWN)]
-            | self._piece_bitboards[piece_code(WHITE, ROOK)]
-            | self._piece_bitboards[piece_code(BLACK, ROOK)]
-            | self._piece_bitboards[piece_code(WHITE, QUEEN)]
-            | self._piece_bitboards[piece_code(BLACK, QUEEN)]
+            piece_bitboards[PAWN]
+            | piece_bitboards[PAWN + 6]
+            | piece_bitboards[ROOK]
+            | piece_bitboards[ROOK + 6]
+            | piece_bitboards[QUEEN]
+            | piece_bitboards[QUEEN + 6]
         )
         if pawns_rooks_queens:
             return False
 
-        knights = (
-            self._piece_bitboards[piece_code(WHITE, KNIGHT)]
-            | self._piece_bitboards[piece_code(BLACK, KNIGHT)]
-        )
-        bishops = (
-            self._piece_bitboards[piece_code(WHITE, BISHOP)]
-            | self._piece_bitboards[piece_code(BLACK, BISHOP)]
-        )
+        knights = piece_bitboards[KNIGHT] | piece_bitboards[KNIGHT + 6]
+        bishops = piece_bitboards[BISHOP] | piece_bitboards[BISHOP + 6]
         minor_count = popcount(knights | bishops)
         if minor_count <= 1:
             return True

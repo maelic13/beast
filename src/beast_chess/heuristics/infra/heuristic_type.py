@@ -2,9 +2,7 @@ from enum import Enum
 
 
 class HeuristicType(Enum):
-    """
-    Supported heuristic types.
-    """
+    """Supported heuristic types."""
 
     CLASSICAL = "classical"
     NEURAL_NETWORK = "neural_network"
@@ -12,8 +10,7 @@ class HeuristicType(Enum):
 
     @staticmethod
     def from_str(string: str) -> "HeuristicType":
-        """
-        Get HeuristicType from string.
+        """Get HeuristicType from string.
         :param string: identifier
         :return: heuristic type
         """

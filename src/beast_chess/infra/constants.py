@@ -6,7 +6,7 @@ class Constants:
     # engine info
     AUTHOR = "Miloslav Macurek"
     ENGINE_NAME = "Beast"
-    ENGINE_VERSION = "3.3.3"
+    ENGINE_VERSION = "4.0.0"
     DEFAULT_MODEL_FILE = "v1_model2.onnx"
 
     # constants

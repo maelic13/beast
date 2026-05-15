@@ -2,8 +2,7 @@ import numpy as np
 
 
 def fen_to_input(fen: str) -> np.ndarray:
-    """
-    Convert a FEN string into a numpy array of shape (17, 8, 8):
+    """Convert a FEN string into a numpy array of shape (17, 8, 8):
     12 piece planes, side-to-move plane, and 4 castling rights planes.
     """
     parts = fen.split()

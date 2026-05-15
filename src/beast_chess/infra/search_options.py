@@ -1,16 +1,14 @@
 from multiprocessing import cpu_count
 from pathlib import Path
 
-from chess import Board
-
+from beast_chess.board import Board
 from beast_chess.heuristics import HeuristicType
 
 from .constants import Constants
 
 
 class SearchOptions:
-    """
-    Search options for engine.
+    """Search options for engine.
 
     board: chess board representation
     heuristic_type: what heuristic to use for evaluation, see HeuristicType
@@ -33,11 +31,8 @@ class SearchOptions:
         self.black_increment: int = 0  # [ms]
         self.depth: int = Constants.INFINITE_DEPTH
 
-        self.fifty_moves_rule = True
         self.heuristic_type = HeuristicType.CLASSICAL
         self.model_file = Constants.default_model_path()
-        self.syzygy_path: Path | None = None
-        self.syzygy_probe_limit: int = 7
         self.threads: int = 1
 
     def __str__(self) -> str:
@@ -50,19 +45,15 @@ class SearchOptions:
             f"\tblack time: {self.black_time}\n"
             f"\tblack increment: {self.black_increment}\n"
             f"\tdepth: {self.depth}\n"
-            f"\tfifty moves rule: {self.fifty_moves_rule}\n"
             f"\theuristic type: {self.heuristic_type}\n"
             f"\tmodel file: {self.model_file}\n"
-            f"\tsyzygy path: {self.syzygy_path}\n"
-            f"\tsyzygy probe limit: {self.syzygy_probe_limit}\n"
             f"\tthreads: {self.threads}\n"
             f")\n"
         )
 
     @staticmethod
     def get_uci_options() -> list[str]:
-        """
-        Available options to be set in uci string format.
+        """Available options to be set in uci string format.
         :return: list of uci formatted options
         """
         options = SearchOptions()
@@ -73,18 +64,6 @@ class SearchOptions:
                 f"var {' var '.join(h.name.lower() for h in HeuristicType)}"
             ),
             f"option name ModelFile type string default {options.model_file!s} ",
-            (
-                f"option name Syzygy50MoveRule type check default "
-                f"{str(options.fifty_moves_rule).lower()}"
-            ),
-            (
-                f"option name SyzygyPath type string "
-                f"default {str(options.syzygy_path) if options.syzygy_path else '<empty>'}"
-            ),
-            (
-                f"option name SyzygyProbeLimit type spin default {options.syzygy_probe_limit} "
-                f"min 0 max 7"
-            ),
             f"option name Threads type spin default {options.threads} min 1 max {cpu_count()}",
         ]
 
@@ -134,41 +113,26 @@ class SearchOptions:
         if "infinite" in args:
             self.depth = Constants.INFINITE_DEPTH
 
-    def set_option(self, args: list[str]) -> None:  # noqa: C901, PLR0912
-        """
-        Set the search option, not changed until a specific action (no reset).
+    def set_option(self, args: list[str]) -> None:
+        """Set the search option, not changed until a specific action (no reset).
         :param args: arguments of setoption command
         """
-        option_name = args[1].lower()
-        value = " ".join(args[3:])
+        if not args or args[0].lower() != "name":
+            return
+
+        lowered_args = [arg.lower() for arg in args]
+        value_index = lowered_args.index("value") if "value" in lowered_args else len(args)
+        option_name = "".join(args[1:value_index]).lower()
+        value = " ".join(args[value_index + 1 :]) if value_index < len(args) else ""
 
         match option_name:
-            case "syzygy50moverule":
-                match value.lower():
-                    case "true":
-                        self.fifty_moves_rule = True
-                    case "false":
-                        self.fifty_moves_rule = False
-                    case _:
-                        print("Invalid syzygy 50 move rule.")
-            case "heuristic":
+            case "heuristic" | "heuristictype":
                 try:
                     self.heuristic_type = HeuristicType.from_str(value)
                 except RuntimeError as err:
                     print(err)
             case "modelfile":
                 self.model_file = Path(value.replace("\\", "/"))
-            case "syzygypath":
-                path = Path(value.replace("\\", "/"))
-                if not path.exists():
-                    print("Invalid syzygy path.")
-                    return
-                self.syzygy_path = path
-            case "syzygyprobelimit":
-                try:
-                    self.syzygy_probe_limit = int(value)
-                except ValueError:
-                    print("Invalid syzygy probe limit.")
             case "threads":
                 try:
                     self.threads = int(value)
