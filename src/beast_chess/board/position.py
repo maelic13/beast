@@ -69,7 +69,6 @@ from .constants import (
     opposite,
     parse_square,
     piece_code,
-    piece_color,
     piece_symbol,
     piece_type,
     square_name,
@@ -83,15 +82,9 @@ from .move import (
     PROMOTION,
     Move,
     encode_move,
-    from_square,
-    is_en_passant,
     parse_uci_squares,
     same_move,
-    to_square,
     uci,
-)
-from .move import (
-    is_capture as move_is_capture,
 )
 from .zobrist import CASTLING_KEYS, EN_PASSANT_FILE_KEYS, PIECE_KEYS, SIDE_TO_MOVE_KEY
 
@@ -222,14 +215,6 @@ class Board:  # noqa: PLR0904
         return self._occupancy_by_color[WHITE], self._occupancy_by_color[BLACK]
 
     @property
-    def legal_moves(self) -> tuple[Move, ...]:
-        return tuple(self.generate_legal_moves())
-
-    @property
-    def pseudo_legal_moves(self) -> tuple[Move, ...]:
-        return tuple(self.generate_pseudo_legal_moves())
-
-    @property
     def move_stack(self) -> tuple[Move, ...]:
         return tuple(state[0] for state in self._history)
 
@@ -353,9 +338,6 @@ class Board:  # noqa: PLR0904
 
     def piece_type_at(self, square: int) -> int:
         return piece_type(self._squares[square])
-
-    def piece_map(self) -> dict[int, int]:
-        return {square: piece for square, piece in enumerate(self._squares) if piece != NO_PIECE}
 
     def pieces(self, piece: int, color: int) -> int:
         return self._piece_bitboards[piece_code(color, piece)]
@@ -1390,45 +1372,6 @@ class Board:  # noqa: PLR0904
             case 58:
                 self._move_piece(piece_code(BLACK, ROOK), D8, A8)
 
-    def _captured_square(self, move: Move) -> int:
-        if is_en_passant(move):
-            return to_square(move) - 8 if self._side_to_move == WHITE else to_square(move) + 8
-        return to_square(move) if self._squares[to_square(move)] != NO_PIECE else NO_SQUARE
-
-    def _update_castling_rights(
-        self,
-        move: Move,
-        moved_piece: int,
-        captured_square: int,
-        captured_piece: int,
-    ) -> None:
-        old_rights = self._castling_rights
-        source = from_square(move)
-        if piece_type(moved_piece) == KING:
-            if piece_color(moved_piece) == WHITE:
-                self._castling_rights &= ~(WHITE_KINGSIDE | WHITE_QUEENSIDE)
-            else:
-                self._castling_rights &= ~(BLACK_KINGSIDE | BLACK_QUEENSIDE)
-        elif piece_type(moved_piece) == ROOK:
-            self._clear_rook_castling_right(source)
-
-        if captured_piece != NO_PIECE and piece_type(captured_piece) == ROOK:
-            self._clear_rook_castling_right(captured_square)
-
-        if old_rights != self._castling_rights:
-            self._zobrist_key ^= CASTLING_KEYS[old_rights] ^ CASTLING_KEYS[self._castling_rights]
-
-    def _clear_rook_castling_right(self, square: int) -> None:
-        match square:
-            case 0:
-                self._castling_rights &= ~WHITE_QUEENSIDE
-            case 7:
-                self._castling_rights &= ~WHITE_KINGSIDE
-            case 56:
-                self._castling_rights &= ~BLACK_QUEENSIDE
-            case 63:
-                self._castling_rights &= ~BLACK_KINGSIDE
-
     def _put_piece(self, piece: int, square: int) -> None:
         bit = BB_SQUARES[square]
         color = BLACK if piece > KING else WHITE
@@ -1472,59 +1415,27 @@ class Board:  # noqa: PLR0904
         )
         return file_of(ep_square) if attackers else NO_SQUARE
 
-    def is_capture(self, move: Move) -> bool:
-        return move_is_capture(move) or self._captured_square(move) != NO_SQUARE
-
-    def is_en_passant(self, move: Move) -> bool:  # noqa: PLR6301
-        return is_en_passant(move)
-
-    def gives_check(self, move: Move) -> bool:
-        self.push(move)
-        gives_check = self.is_check()
-        self.pop()
-        return gives_check
-
     def is_fifty_moves(self) -> bool:
         return self._halfmove_clock >= 100
 
     def is_repetition(self, count: int = 3) -> bool:
         return self._key_history.count(self._zobrist_key) >= count
 
-    def is_checkmate(self) -> bool:
-        return self.is_check() and not any(self.generate_legal_moves())
-
-    def is_stalemate(self) -> bool:
-        return not self.is_check() and not any(self.generate_legal_moves())
-
-    def is_game_over(self) -> bool:
-        return (
-            self.is_checkmate()
-            or self.is_stalemate()
-            or self.is_fifty_moves()
-            or self.is_repetition()
-            or self.has_insufficient_material()
-        )
-
     def has_insufficient_material(self) -> bool:
+        piece_bitboards = self._piece_bitboards
         pawns_rooks_queens = (
-            self._piece_bitboards[piece_code(WHITE, PAWN)]
-            | self._piece_bitboards[piece_code(BLACK, PAWN)]
-            | self._piece_bitboards[piece_code(WHITE, ROOK)]
-            | self._piece_bitboards[piece_code(BLACK, ROOK)]
-            | self._piece_bitboards[piece_code(WHITE, QUEEN)]
-            | self._piece_bitboards[piece_code(BLACK, QUEEN)]
+            piece_bitboards[PAWN]
+            | piece_bitboards[PAWN + 6]
+            | piece_bitboards[ROOK]
+            | piece_bitboards[ROOK + 6]
+            | piece_bitboards[QUEEN]
+            | piece_bitboards[QUEEN + 6]
         )
         if pawns_rooks_queens:
             return False
 
-        knights = (
-            self._piece_bitboards[piece_code(WHITE, KNIGHT)]
-            | self._piece_bitboards[piece_code(BLACK, KNIGHT)]
-        )
-        bishops = (
-            self._piece_bitboards[piece_code(WHITE, BISHOP)]
-            | self._piece_bitboards[piece_code(BLACK, BISHOP)]
-        )
+        knights = piece_bitboards[KNIGHT] | piece_bitboards[KNIGHT + 6]
+        bishops = piece_bitboards[BISHOP] | piece_bitboards[BISHOP + 6]
         minor_count = popcount(knights | bishops)
         if minor_count <= 1:
             return True

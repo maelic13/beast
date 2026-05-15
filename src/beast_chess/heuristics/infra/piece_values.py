@@ -1,4 +1,4 @@
-from chess import BISHOP, KNIGHT, PAWN, QUEEN, ROOK
+from beast_chess.board import BISHOP, KNIGHT, PAWN, QUEEN, ROOK
 
 
 class PieceValues:

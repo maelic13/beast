@@ -8,7 +8,6 @@ Features:
 - infinite analysis mode
 - time management
 - three heuristic types: classical, neural network, random
-- Syzygy tablebase support
 
 ## Releases
 
@@ -97,9 +96,6 @@ setoption name ModelFile value <path to your model file>
 Relevant UCI options include:
 - `Heuristic`: `classical`, `neural_network`, or `random`
 - `ModelFile`: path to the ONNX model to use for neural-network evaluation
-- `SyzygyPath`
-- `Syzygy50MoveRule`
-- `SyzygyProbeLimit`
 - `Threads`
 
 ## Train Your Own Neural Network

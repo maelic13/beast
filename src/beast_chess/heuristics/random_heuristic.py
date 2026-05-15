@@ -1,6 +1,6 @@
 from random import randint
 
-from chess import Board
+from beast_chess.board import Board
 
 from .infra import Heuristic
 

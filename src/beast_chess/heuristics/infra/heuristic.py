@@ -1,40 +1,21 @@
 from abc import ABC, abstractmethod
 from math import log10
 
-from chess import Board
-from chess.syzygy import open_tablebase
+from beast_chess.board import Board
 
 
 class Heuristic(ABC):
-    def __init__(
-        self,
-        fifty_moves_rule: bool = True,  # noqa: FBT001, FBT002
-        syzygy_path: str | None = None,
-        syzygy_probe_limit: int = 7,
-    ) -> None:
-        """
-        Common constructor for heuristics.
-        :param fifty_moves_rule: should enforce 50 move rule
-        :param syzygy_path: path to syzygy tablebases
-        :param syzygy_probe_limit: limit for the maximum number of pieces in the tablebases
-        """
-        self.fifty_moves_rule = fifty_moves_rule
-        self._syzygy_path = syzygy_path
-        self._syzygy_probe_limit = syzygy_probe_limit
-
+    def __init__(self) -> None:
         # precalculate win and loss values (speed-up of heuristic)
         self.draw_value = self.probability_to_centipawn(0.5) * 100  # [cp]
         self.loss_value = self.probability_to_centipawn(0.0) * 100  # [cp]
         self.win_value = self.probability_to_centipawn(1.0) * 100  # [cp]
 
     def evaluate_result(self, board: Board, depth: int) -> float:
-        if board.outcome().winner is None:
-            return self.draw_value
-
-        if board.turn is not board.outcome().winner:
+        if board.is_check():
             return self.loss_value - 100 * depth
 
-        return self.win_value + 100 * depth
+        return self.draw_value
 
     def evaluate_position(self, board: Board) -> float:
         """
@@ -42,25 +23,10 @@ class Heuristic(ABC):
         :param board: chess board representation
         :return: board evaluation
         """
-        if board.is_game_over():
-            if board.is_checkmate():
-                return self.loss_value
+        if board.is_fifty_moves() or board.is_repetition() or board.has_insufficient_material():
             return self.draw_value
 
-        # tablebase probing
-        tablebase_evaluation = 0.0
-        if len(board.piece_map()) <= self._syzygy_probe_limit and self._syzygy_path is not None:
-            with open_tablebase(self._syzygy_path) as tablebase:
-                wdl = tablebase.get_wdl(board)
-
-            if (self.fifty_moves_rule and wdl == 2) or (not self.fifty_moves_rule and wdl == 1):
-                tablebase_evaluation = self.win_value
-            elif (self.fifty_moves_rule and wdl == -2) or (not self.fifty_moves_rule and wdl == -1):
-                tablebase_evaluation = self.loss_value
-            else:
-                return self.draw_value
-
-        return tablebase_evaluation + self._evaluate_internal(board)
+        return self._evaluate_internal(board)
 
     @staticmethod
     def centipawn_to_probability(centipawn: int) -> float:
