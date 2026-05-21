@@ -13,14 +13,11 @@ import sys
 import time
 from contextlib import redirect_stdout
 from queue import Queue
-from typing import TYPE_CHECKING, TextIO
+from typing import TextIO
 
 from beast_chess.board import Board
 from beast_chess.engine import Engine
 from beast_chess.heuristics import ClassicalHeuristic
-
-if TYPE_CHECKING:
-    pass
 
 # 16 positions covering openings, middlegames, endgames, and tactics.
 BENCH_FENS: tuple[str, ...] = (
