@@ -264,7 +264,7 @@ class Engine:
         previous_score: float,
         previous_line: list[Move],
     ) -> tuple[float, list[Move]]:
-        if depth == 1:
+        if depth == 1 or abs(previous_score) > MATE_THRESHOLD:
             return self._negamax(board, depth, float("-inf"), float("inf"))
 
         window = ASPIRATION_WINDOW
@@ -552,7 +552,7 @@ class Engine:
             alpha = max(alpha, evaluation)
 
         if searched_moves == 0:
-            return alpha, []
+            return (static_eval if static_eval is not None else alpha), []
 
         bound = TT_EXACT if best_score > alpha_original else TT_UPPER
         self._store_tt(key, depth, alpha, bound, best_move, ply, static_eval)
