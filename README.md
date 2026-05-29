@@ -1,5 +1,9 @@
 # Beast
 
+<p align="center">
+  <img src="logo/logo1.jpg" alt="Beast logo" width="260">
+</p>
+
 UCI-compatible chess engine with classical and neural network evaluation.
 
 Features:
@@ -10,6 +14,8 @@ Features:
 - three heuristic types: classical, neural network, random
 - Syzygy tablebase support
 
+---
+
 ## Releases
 
 - [Latest release](https://github.com/maelic13/beast/releases/latest)
@@ -19,10 +25,14 @@ Release assets include:
 - standalone executables for Windows (x64, arm64), macOS (arm64) and Linux (x64, arm64).
 - the latest bundled neural-network model as a separate `.onnx` asset
 
+---
+
 ## macOS permissions
 To run on macOS, use these two command to allow the executable to run
 1. ```xattr -d com.apple.quarantine <path_to_executable>```
 2. ```chmod +x <path_to_executable>```
+
+---
 
 ## Requirements
 
@@ -30,6 +40,8 @@ To run on macOS, use these two command to allow the executable to run
 
 Beast targets Python `>=3.12`. You do not need to use exactly Python 3.12;
 newer supported Python versions work too as long as the dependencies for your platform are available.
+
+---
 
 ## Install And Run From Python
 
@@ -45,6 +57,8 @@ pip install .
 ```bash
 beast
 ```
+
+---
 
 ## Build A Local Executable
 
@@ -62,6 +76,8 @@ pyinstaller --clean --onefile --optimize=2 --noupx --name beast src/beast_chess/
 ```
 
 The executable will be created in the `dist` folder as `beast` on macOS/Linux or `beast.exe` on Windows.
+
+---
 
 ## Neural Network Evaluation
 
@@ -92,6 +108,8 @@ You can also point `ModelFile` to another compatible `.onnx` file:
 setoption name ModelFile value <path to your model file>
 ```
 
+---
+
 ## UCI Options
 
 Relevant UCI options include:
@@ -102,11 +120,15 @@ Relevant UCI options include:
 - `SyzygyProbeLimit`
 - `Threads`
 
+---
+
 ## Train Your Own Neural Network
 
 Neural-network training and model-management tooling live in a separate repository:
 
 - [net_trainer](https://github.com/maelic13/net_trainer)
+
+---
 
 ## License
 
