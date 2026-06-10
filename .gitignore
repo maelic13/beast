@@ -19,3 +19,4 @@ target/
 *.pyc
 *.spec
 Cargo.lock
+.DS_Store
